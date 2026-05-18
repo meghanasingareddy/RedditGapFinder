@@ -1,0 +1,111 @@
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@300,400,500,600,700,800&f[]=clash-display@200,300,400,500,600,700&display=swap');
+
+:root {
+  --bg-color: #0f1115;
+  --panel-bg: #171b22;
+  --border-color: #262c36;
+  --primary-color: #8b7cff;
+  --success-color: #22c55e;
+  --text-main: #f5f7fb;
+  --text-muted: #98a2b3;
+  --hover-bg: #1c212a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.editorial-headline {
+  font-family: 'Cabinet Grotesk', 'Clash Display', -apple-system, sans-serif;
+  font-size: 2.1rem;
+  font-weight: 600; /* SemiBold */
+  letter-spacing: -0.025em;
+  line-height: 1.18;
+  color: var(--text-main);
+  margin-bottom: 0.75rem;
+}
+
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+  color: #fff;
+  border: none;
+  padding: 0.4rem 0.85rem;
+  height: 36px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.825rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.05) inset;
+}
+
+.btn-primary:hover {
+  background: #7a6aef;
+  transform: translateY(-0.5px);
+  box-shadow: 0 4px 12px rgba(139, 124, 255, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 0.4rem 0.85rem;
+  height: 36px;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.825rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-outline:hover {
+  background: var(--hover-bg);
+  border-color: var(--text-muted);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
