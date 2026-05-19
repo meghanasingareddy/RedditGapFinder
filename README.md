@@ -2,6 +2,8 @@
 
 Discover startup ideas from real Reddit frustrations.
 
+**Live Application:** [https://frontend-xi-taupe-49.vercel.app](https://frontend-xi-taupe-49.vercel.app)
+
 RedditGapFinder is an AI-powered, full-stack SaaS platform designed to scan massive amounts of Reddit discussions to discover unmet needs, product gaps, and highly-lucrative business opportunities. By analyzing user sentiment and clustering recurring complaints, it acts as a crystal ball for your next big startup idea.
 
 ## Features
