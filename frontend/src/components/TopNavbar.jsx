@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sun, Bell, ChevronDown, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Search, Sun, Bell, ChevronDown, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw, LogIn } from 'lucide-react';
 import axios from 'axios';
+import { CONFIG } from '../config';
+import { useAuth } from '../context/AuthContext';
 
 function TopNavbar() {
   const [query, setQuery] = useState('');
@@ -9,6 +11,8 @@ function TopNavbar() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+  const { user, loginWithGoogle, logout } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && query.trim()) {
@@ -20,7 +24,7 @@ function TopNavbar() {
   const fetchStatus = async () => {
     setRefreshing(true);
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/status');
+      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/status`);
       setStatus({
         loading: false,
         online: true,
@@ -137,6 +141,57 @@ function TopNavbar() {
           z-index: 1000;
           transition: all 0.2s ease;
         }
+        .user-menu-dropdown {
+          position: absolute;
+          top: 55px;
+          right: 0;
+          width: 220px;
+          background: rgba(23, 27, 34, 0.96);
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          padding: 0.5rem;
+          box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+          backdrop-filter: blur(16px);
+          z-index: 1000;
+        }
+        .user-menu-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.6rem 0.75rem;
+          border-radius: 6px;
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          cursor: pointer;
+          border: none;
+          background: none;
+          width: 100%;
+          transition: all 0.15s;
+        }
+        .user-menu-item:hover {
+          background: var(--hover-bg);
+          color: #fff;
+        }
+        .sign-in-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 6px 16px;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          border: 1px solid rgba(139, 92, 246, 0.4);
+          background: rgba(139, 92, 246, 0.1);
+          color: #a78bfa;
+          transition: all 0.2s;
+        }
+        .sign-in-btn:hover {
+          background: rgba(139, 92, 246, 0.2);
+          border-color: rgba(139, 92, 246, 0.6);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+        }
       `}</style>
 
       <div style={{ position: 'relative' }}>
@@ -207,14 +262,48 @@ REDDIT_USER_AGENT=RedditGapFinder/1.0`}
 
         <Sun size={18} color="var(--text-muted)" style={{ cursor: 'pointer' }} />
         <Bell size={18} color="var(--text-muted)" style={{ cursor: 'pointer' }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-          <img src="https://ui-avatars.com/api/?name=Arjun+Dev&background=171b22&color=f5f7fb" alt="Profile" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--border-color)' }} />
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>Arjun Dev</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Pro Plan</span>
+
+        {/* User section — real user data or Sign In button */}
+        {user ? (
+          <div 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', position: 'relative' }}
+            onClick={() => setShowUserMenu(!showUserMenu)}
+          >
+            <img 
+              src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=171b22&color=f5f7fb`} 
+              alt={user.displayName || 'User'} 
+              style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--border-color)' }} 
+            />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{user.displayName || 'User'}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Pro Access</span>
+            </div>
+            <ChevronDown size={14} color="var(--text-muted)" />
+
+            {/* User dropdown menu */}
+            {showUserMenu && (
+              <div className="user-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                <div style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border-color)', marginBottom: '0.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#fff' }}>{user.displayName}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
+                </div>
+                <button className="user-menu-item" onClick={logout} style={{ color: '#ef4444' }}>
+                  <LogIn size={14} /> Sign Out
+                </button>
+              </div>
+            )}
           </div>
-          <ChevronDown size={14} color="var(--text-muted)" />
-        </div>
+        ) : (
+          <button className="sign-in-btn" onClick={loginWithGoogle}>
+            <svg width="16" height="16" viewBox="0 0 18 18">
+              <path fill="#EA4335" d="M9 3.58c1.12 0 2.12.39 2.92 1.15l2.17-2.17C12.78.88 11.02 0 9 0 5.48 0 2.52 2.02 1.12 4.96l2.76 2.14C4.54 4.88 6.58 3.58 9 3.58z" />
+              <path fill="#4285F4" d="M17.64 9.2c0-.59-.05-1.17-.16-1.73H9v3.26h4.84c-.21 1.1-.83 2.03-1.76 2.66l2.73 2.13c1.6-1.48 2.53-3.66 2.53-6.32z" />
+              <path fill="#FBBC05" d="M3.88 10.78A5.36 5.36 0 0 1 3.5 9c0-.62.11-1.22.3-1.78L1.04 5.08A8.99 8.99 0 0 0 0 9c0 1.45.35 2.82.96 4.04l2.92-2.26z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.73-2.13c-.76.51-1.73.82-2.93.82-2.42 0-4.46-1.3-5.19-3.52L1.12 13.1C2.52 16.02 5.48 18 9 18z" />
+            </svg>
+            Sign In
+          </button>
+        )}
       </div>
     </div>
   );

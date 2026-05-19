@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { CONFIG } from '../config';
 import { Bookmark, X, Search, Sparkles, Share2, Download, CheckCircle2, ArrowRight } from 'lucide-react';
 
 function StartupIdeas() {
@@ -18,7 +19,7 @@ function StartupIdeas() {
 
   const fetchIdeas = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/ideas');
+      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/ideas`);
       setIdeas(res.data);
     } catch (err) {
       console.error('Error fetching startup ideas:', err);
@@ -35,7 +36,7 @@ function StartupIdeas() {
     try {
       // Fetch related conversations based on idea name
       const searchTerms = idea.name.split(' ')[0];
-      const res = await axios.get(`http://127.0.0.1:8000/api/posts?search=${searchTerms}`);
+      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/posts?search=${searchTerms}`);
       setRelatedPosts(res.data.slice(0, 3));
     } catch (err) {
       console.error('Error fetching idea contexts:', err);
@@ -46,7 +47,7 @@ function StartupIdeas() {
 
   const handleBookmarkIdea = async (idea) => {
     try {
-      await axios.post('http://127.0.0.1:8000/api/saved', {
+      await axios.post(`${CONFIG.API_BASE_URL}/api/saved`, {
         item_type: 'idea',
         item_id: idea.id,
         name: idea.name,

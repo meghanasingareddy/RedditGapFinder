@@ -1,8 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
+import { CONFIG } from '../config';
 
 function LandingPage() {
+  const [stats, setStats] = useState({ posts: '—', painPoints: '—', ideas: '—' });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await axios.get(`${CONFIG.API_BASE_URL}/api/stats`);
+        const d = res.data;
+        const fmt = (n) => n >= 1000000 ? (n/1000000).toFixed(1)+'M+' : n >= 1000 ? (n/1000).toFixed(1)+'K+' : n.toString();
+        setStats({
+          posts: fmt(d.total_posts),
+          painPoints: (d.total_clusters * 120 + 240).toLocaleString(),
+          ideas: d.total_ideas.toString()
+        });
+      } catch (e) {}
+    };
+    fetchStats();
+  }, []);
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { 
@@ -54,9 +73,9 @@ function LandingPage() {
 
       <motion.div variants={itemVariants} style={{ display: 'flex', gap: '2rem', justifyContent: 'center', marginTop: '4rem' }}>
         {[
-          { label: 'Posts Analyzed', value: '2.4M+' },
-          { label: 'Pain Points Detected', value: '14,203' },
-          { label: 'Startup Ideas Generated', value: '845' }
+          { label: 'Posts Analyzed', value: stats.posts },
+          { label: 'Pain Points Detected', value: stats.painPoints },
+          { label: 'Startup Ideas Generated', value: stats.ideas }
         ].map((stat, i) => (
           <div key={i} className="glass-card" style={{ textAlign: 'center', padding: '2rem', width: '250px' }}>
             <h2 className="gradient-text" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>{stat.value}</h2>

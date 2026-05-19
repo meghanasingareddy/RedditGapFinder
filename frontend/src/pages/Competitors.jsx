@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import { CONFIG } from '../config';
 import { Eye, TrendingUp, AlertCircle, Sparkles } from 'lucide-react';
 
 function Competitors() {
@@ -13,7 +14,7 @@ function Competitors() {
 
   const fetchCompetitors = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/competitors');
+      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/competitors`);
       setCompetitors(res.data);
     } catch (err) {
       console.error('Error fetching competitors:', err);
@@ -84,7 +85,15 @@ function Competitors() {
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>REDDIT MENTIONS</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {comp.mentions}
-                      <span style={{ color: 'var(--success-color)', fontSize: '0.75rem', fontWeight: 500 }}>+12%</span>
+                      {(() => {
+                        const avgMentions = competitors.reduce((s, c) => s + c.mentions, 0) / (competitors.length || 1);
+                        const pct = avgMentions > 0 ? Math.round(((comp.mentions - avgMentions) / avgMentions) * 100) : 0;
+                        return pct !== 0 ? (
+                          <span style={{ color: pct > 0 ? 'var(--success-color)' : '#ef4444', fontSize: '0.75rem', fontWeight: 500 }}>
+                            {pct > 0 ? '+' : ''}{pct}%
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
                   </div>
                   <div>

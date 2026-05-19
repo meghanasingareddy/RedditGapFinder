@@ -1,6 +1,6 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
 
 import LeftSidebar from './components/LeftSidebar';
@@ -18,10 +18,140 @@ import Competitors from './pages/Competitors';
 import SubredditTracker from './pages/SubredditTracker';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
-import AuthPage from './pages/AuthPage';
+import { Lock, Sparkles, AlertTriangle } from 'lucide-react';
+
+// Protected Route wrapper — shows blurred preview + login prompt for unauthenticated users
+function ProtectedRoute({ children }) {
+  const { user, loginWithGoogle } = useAuth();
+
+  if (user) {
+    return children;
+  }
+
+  return (
+    <div style={{ position: 'relative', minHeight: '70vh' }}>
+      {/* Blurred preview of the page behind */}
+      <div style={{
+        filter: 'blur(8px)',
+        opacity: 0.35,
+        pointerEvents: 'none',
+        userSelect: 'none'
+      }}>
+        {children}
+      </div>
+
+      {/* Login overlay */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10
+        }}
+      >
+        <div style={{
+          background: 'rgba(17, 18, 27, 0.85)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '16px',
+          padding: '2.5rem 2rem',
+          textAlign: 'center',
+          maxWidth: '400px',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)'
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            background: 'linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1.25rem',
+            boxShadow: '0 8px 24px rgba(139, 92, 246, 0.3)'
+          }}>
+            <Lock color="#fff" size={22} />
+          </div>
+
+          <h3 style={{
+            fontSize: '1.25rem',
+            fontWeight: 700,
+            color: '#fff',
+            marginBottom: '0.5rem',
+            letterSpacing: '-0.3px'
+          }}>
+            Unlock Full Access
+          </h3>
+
+          <p style={{
+            fontSize: '0.85rem',
+            color: 'rgba(255, 255, 255, 0.5)',
+            lineHeight: 1.5,
+            marginBottom: '1.75rem',
+            padding: '0 0.5rem'
+          }}>
+            Sign in with Google to access advanced features like Search Explorer, Reports, Saved Bookmarks, and Subreddit Tracking.
+          </p>
+
+          <motion.button
+            whileHover={{ scale: 1.02, boxShadow: '0 8px 24px rgba(255,255,255,0.06)' }}
+            whileTap={{ scale: 0.98 }}
+            onClick={loginWithGoogle}
+            style={{
+              width: '100%',
+              height: '46px',
+              background: '#fff',
+              color: '#11121b',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+            }}
+          >
+            {/* Google icon */}
+            <svg width="18" height="18" viewBox="0 0 18 18">
+              <path fill="#EA4335" d="M9 3.58c1.12 0 2.12.39 2.92 1.15l2.17-2.17C12.78.88 11.02 0 9 0 5.48 0 2.52 2.02 1.12 4.96l2.76 2.14C4.54 4.88 6.58 3.58 9 3.58z" />
+              <path fill="#4285F4" d="M17.64 9.2c0-.59-.05-1.17-.16-1.73H9v3.26h4.84c-.21 1.1-.83 2.03-1.76 2.66l2.73 2.13c1.6-1.48 2.53-3.66 2.53-6.32z" />
+              <path fill="#FBBC05" d="M3.88 10.78A5.36 5.36 0 0 1 3.5 9c0-.62.11-1.22.3-1.78L1.04 5.08A8.99 8.99 0 0 0 0 9c0 1.45.35 2.82.96 4.04l2.92-2.26z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.73-2.13c-.76.51-1.73.82-2.93.82-2.42 0-4.46-1.3-5.19-3.52L1.12 13.1C2.52 16.02 5.48 18 9 18z" />
+            </svg>
+            Sign In with Google
+          </motion.button>
+
+          <div style={{
+            marginTop: '1.25rem',
+            fontSize: '0.65rem',
+            color: 'rgba(255, 255, 255, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}>
+            <Sparkles size={10} />
+            Free access • No credit card required
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const [showSetupInstructions, setShowSetupInstructions] = useState(false);
 
   if (loading) {
     return (
@@ -54,28 +184,132 @@ function AppContent() {
     );
   }
 
-  if (!user) {
-    return <AuthPage />;
-  }
+  const isMockUser = user && user.uid === "mock-dev-user-id";
 
+  // Dashboard is always visible — no auth wall
   return (
     <div className="app-container">
       <LeftSidebar />
       
       <div className="center-content">
         <TopNavbar />
+        
+        {isMockUser && (
+          <div style={{
+            background: 'rgba(247, 144, 9, 0.05)',
+            borderBottom: '1px solid rgba(247, 144, 9, 0.15)',
+            padding: '0.75rem 2rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem',
+            zIndex: 9,
+            transition: 'all 0.3s ease'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.75rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{
+                  background: 'rgba(247, 144, 9, 0.15)',
+                  padding: '6px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <AlertTriangle size={16} color="#f79009" />
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f79009', display: 'block' }}>
+                    Firebase OAuth Domain Not Authorized
+                  </span>
+                  <span style={{ fontSize: '0.725rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                    Google Sign-in failed (auth/unauthorized-domain). You are logged in with a <strong>Developer Sandbox profile</strong>.
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowSetupInstructions(!showSetupInstructions)}
+                style={{
+                  background: 'rgba(247, 144, 9, 0.1)',
+                  border: '1px solid rgba(247, 144, 9, 0.3)',
+                  color: '#f79009',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(247, 144, 9, 0.2)';
+                  e.target.style.borderColor = '#f79009';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'rgba(247, 144, 9, 0.1)';
+                  e.target.style.borderColor = 'rgba(247, 144, 9, 0.3)';
+                }}
+              >
+                {showSetupInstructions ? 'Hide Setup Guide' : 'How to Enable Real Google Sign-In'}
+              </button>
+            </div>
+
+            {showSetupInstructions && (
+              <div style={{
+                background: 'rgba(15, 17, 21, 0.6)',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginTop: '0.25rem',
+                fontSize: '0.75rem',
+                color: 'rgba(255, 255, 255, 0.8)',
+                lineHeight: 1.5
+              }}>
+                <strong style={{ color: '#fff', display: 'block', marginBottom: '0.5rem' }}>
+                  Follow these quick steps to authorize 'localhost' for real Google Account logins:
+                </strong>
+                <ol style={{ paddingLeft: '1.2rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <li>
+                    Go to the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#8b5cf6', textDecoration: 'underline', fontWeight: 600 }}>Firebase Console</a> and select your project (<code>redditgapfinder-meghna</code>).
+                  </li>
+                  <li>
+                    On the left menu, navigate to <strong>Build &gt; Authentication</strong>, then select the <strong>Settings</strong> tab at the top.
+                  </li>
+                  <li>
+                    In the <strong>Authorized domains</strong> section, click the <strong>Add domain</strong> button.
+                  </li>
+                  <li>
+                    Type <code style={{ background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: '4px', color: '#a78bfa', fontFamily: 'monospace' }}>localhost</code> and click <strong>Add</strong>.
+                  </li>
+                  <li>
+                    Sign out of your Sandbox account and sign back in using your real Google account!
+                  </li>
+                </ol>
+              </div>
+            )}
+          </div>
+        )}
+
         <main className="main-view">
           <AnimatePresence mode="wait">
             <Routes>
+              {/* PUBLIC PAGES — visible to everyone */}
               <Route path="/" element={<Overview />} />
               <Route path="/pain-points" element={<PainPoints />} />
               <Route path="/ideas" element={<StartupIdeas />} />
               <Route path="/trends" element={<Trends />} />
-              <Route path="/search" element={<SearchExplorer />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/saved" element={<Saved />} />
               <Route path="/competitors" element={<Competitors />} />
-              <Route path="/tracker" element={<SubredditTracker />} />
+
+              {/* PROTECTED PAGES — require Google auth */}
+              <Route path="/search" element={<ProtectedRoute><SearchExplorer /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/saved" element={<ProtectedRoute><Saved /></ProtectedRoute>} />
+              <Route path="/tracker" element={<ProtectedRoute><SubredditTracker /></ProtectedRoute>} />
+
               <Route path="*" element={<Overview />} />
             </Routes>
           </AnimatePresence>

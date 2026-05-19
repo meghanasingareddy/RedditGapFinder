@@ -3,7 +3,6 @@ from typing import List, Optional
 
 class ConfiguredModel(BaseModel):
     class Config:
-        orm_mode = True
         from_attributes = True
 
 class PostBase(ConfiguredModel):

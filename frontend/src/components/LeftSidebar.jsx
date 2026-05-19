@@ -1,53 +1,77 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, AlertCircle, Lightbulb, TrendingUp, Search, FileText, Bookmark, Eye, Activity, LogOut } from 'lucide-react';
+import { Home, AlertCircle, Lightbulb, TrendingUp, Search, FileText, Bookmark, Eye, Activity, LogOut, Lock, LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
+import { CONFIG } from '../config';
+import Logo from './Logo';
 
 function LeftSidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, loginWithGoogle } = useAuth();
+  const [liveSubs, setLiveSubs] = useState([]);
+
+  useEffect(() => {
+    const fetchLiveData = async () => {
+      try {
+        const res = await axios.get(`${CONFIG.API_BASE_URL}/api/stats`);
+        const subs = (res.data.tracked_subreddits || []).slice(0, 3).map(s => ({
+          name: s.name.startsWith('r/') ? s.name : `r/${s.name}`,
+          posts: s.posts
+        }));
+        setLiveSubs(subs);
+      } catch (e) {
+        // Fallback: try to get from subreddits endpoint
+        try {
+          const res = await axios.get(`${CONFIG.API_BASE_URL}/api/subreddits`);
+          setLiveSubs(res.data.slice(0, 3).map(s => ({
+            name: s.subreddit,
+            posts: s.mentions || 0
+          })));
+        } catch (e2) {}
+      }
+    };
+    fetchLiveData();
+  }, []);
+
+  // Pages that require authentication
+  const protectedPaths = ['/search', '/reports', '/saved', '/tracker'];
+
+  const renderNavLink = (to, icon, label) => {
+    const isProtected = protectedPaths.includes(to);
+    const showLock = isProtected && !user;
+
+    return (
+      <NavLink to={to} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+        {icon}
+        <span style={{ flex: 1 }}>{label}</span>
+        {showLock && (
+          <Lock size={12} style={{ opacity: 0.4, marginLeft: 'auto' }} />
+        )}
+      </NavLink>
+    );
+  };
 
   return (
     <div className="left-sidebar">
-      <div style={{ marginBottom: '2rem', paddingLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <div style={{ width: '24px', height: '24px', background: 'var(--primary-color)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold', fontSize: '14px' }}>
-          R
-        </div>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>RedditGapFinder</h2>
+      <div style={{ marginBottom: '2rem', paddingLeft: '0.25rem' }}>
+        <Logo size={28} />
       </div>
 
       <div className="sidebar-section">
         <div className="sidebar-title">Main</div>
-        <NavLink to="/" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Home size={16} /> Overview
-        </NavLink>
-        <NavLink to="/pain-points" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <AlertCircle size={16} /> Pain Points
-        </NavLink>
-        <NavLink to="/ideas" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Lightbulb size={16} /> Startup Ideas
-        </NavLink>
-        <NavLink to="/trends" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <TrendingUp size={16} /> Trends
-        </NavLink>
-        <NavLink to="/search" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Search size={16} /> Search Explorer
-        </NavLink>
-        <NavLink to="/reports" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <FileText size={16} /> Reports
-        </NavLink>
-        <NavLink to="/saved" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Bookmark size={16} /> Saved
-        </NavLink>
+        {renderNavLink('/', <Home size={16} />, 'Overview')}
+        {renderNavLink('/pain-points', <AlertCircle size={16} />, 'Pain Points')}
+        {renderNavLink('/ideas', <Lightbulb size={16} />, 'Startup Ideas')}
+        {renderNavLink('/trends', <TrendingUp size={16} />, 'Trends')}
+        {renderNavLink('/search', <Search size={16} />, 'Search Explorer')}
+        {renderNavLink('/reports', <FileText size={16} />, 'Reports')}
+        {renderNavLink('/saved', <Bookmark size={16} />, 'Saved')}
       </div>
 
       <div className="sidebar-section">
         <div className="sidebar-title">Monitoring</div>
-        <NavLink to="/competitors" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Eye size={16} /> Competitors
-        </NavLink>
-        <NavLink to="/tracker" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
-          <Activity size={16} /> Subreddit Tracker
-        </NavLink>
+        {renderNavLink('/competitors', <Eye size={16} />, 'Competitors')}
+        {renderNavLink('/tracker', <Activity size={16} />, 'Subreddit Tracker')}
       </div>
 
       <div style={{ marginTop: 'auto' }}>
@@ -59,18 +83,18 @@ function LeftSidebar() {
           </span>
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.5rem', paddingLeft: '0.5rem' }}>
-          <div style={{ marginBottom: '0.5rem' }}>
-            <span style={{ color: 'var(--text-main)' }}>r/startups</span><br/>
-            1,248 new posts
-          </div>
-          <div>
-            <span style={{ color: 'var(--text-main)' }}>r/SaaS</span><br/>
-            892 new posts
-          </div>
+          {liveSubs.length > 0 ? liveSubs.map((sub, idx) => (
+            <div key={idx} style={{ marginBottom: idx < liveSubs.length - 1 ? '0.5rem' : 0 }}>
+              <span style={{ color: 'var(--text-main)' }}>{sub.name}</span><br/>
+              {sub.posts.toLocaleString()} new posts
+            </div>
+          )) : (
+            <div style={{ color: 'var(--text-muted)' }}>No active scans</div>
+          )}
         </div>
 
-        {/* Google User Profile Card */}
-        {user && (
+        {/* Google User Profile Card or Sign In CTA */}
+        {user ? (
           <div style={{
             marginTop: '1.5rem',
             padding: '0.75rem',
@@ -132,6 +156,49 @@ function LeftSidebar() {
               onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)'}
             >
               <LogOut size={14} />
+            </button>
+          </div>
+        ) : (
+          <div style={{
+            marginTop: '1.5rem',
+            padding: '0.75rem',
+            background: 'rgba(139, 92, 246, 0.04)',
+            border: '1px solid rgba(139, 92, 246, 0.15)',
+            borderRadius: '8px',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.5rem' }}>
+              Sign in to unlock all features
+            </div>
+            <button 
+              onClick={loginWithGoogle}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                background: 'rgba(139, 92, 246, 0.15)',
+                border: '1px solid rgba(139, 92, 246, 0.3)',
+                borderRadius: '6px',
+                color: '#a78bfa',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.25)';
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.15)';
+                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+              }}
+            >
+              <LogIn size={13} />
+              Sign In with Google
             </button>
           </div>
         )}

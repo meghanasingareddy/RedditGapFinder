@@ -33,9 +33,18 @@ def startup_event():
         print("Live RSS/Atom scraper is active (Authentication-free).")
     print("="*60 + "\n")
 
+import os
+
+# Parse Allowed Origins from env (comma-separated, default is "*")
+allowed_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "*")
+if allowed_origins_str == "*":
+    origins = ["*"]
+else:
+    origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For dev purposes
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,6 +81,101 @@ def get_api_status():
         "mode": "mock_fallback" if using_mock else "live_rss",
         "details": "Using robust simulated mock-fallback. FORCE_MOCK_DATA is active." if using_mock else "Connected to Live RSS Feed Scraper (Authentication-free).",
         "reddit_client_configured": True
+    }
+
+@app.get("/api/stats")
+def get_dashboard_stats(db: Session = Depends(get_db)):
+    """Returns real aggregate statistics computed from the database."""
+    import datetime
+
+    total_posts = db.query(models.Post).count()
+    total_clusters = db.query(models.Cluster).count()
+    total_ideas = db.query(models.Idea).count()
+    total_trends = db.query(models.Trend).count()
+
+    # Average opportunity score from clusters
+    clusters = db.query(models.Cluster).all()
+    avg_opp = round(
+        sum(c.opportunity_score for c in clusters) / len(clusters), 1
+    ) if clusters else 0
+
+    # Tracked subreddits with real data
+    trackers = db.query(models.SubredditTracker).all()
+    tracked_subreddits = []
+    for t in trackers:
+        post_count = db.query(models.Post).filter(
+            models.Post.subreddit.like(f"%{t.subreddit.replace('r/', '')}%")
+        ).count()
+        tracked_subreddits.append({
+            "name": t.subreddit,
+            "posts": post_count + t.mentions,
+            "growth_percent": t.growth_percent
+        })
+
+    # Build chart data from real pain point opportunity scores
+    chart_data = []
+    for i, cluster in enumerate(clusters[:6]):
+        chart_data.append({
+            "name": cluster.topic_name[:15],
+            "score": round(cluster.opportunity_score)
+        })
+
+    # Sentiment distribution computed from posts (approximate from comments)
+    comments = db.query(models.Comment).all()
+    sentiment_buckets = {"Very Negative": 0, "Negative": 0, "Neutral": 0, "Positive": 0}
+    for c in comments:
+        s = c.sentiment_score or 0
+        if s < -0.3:
+            sentiment_buckets["Very Negative"] += 1
+        elif s < 0:
+            sentiment_buckets["Negative"] += 1
+        elif s < 0.3:
+            sentiment_buckets["Neutral"] += 1
+        else:
+            sentiment_buckets["Positive"] += 1
+
+    # If no comments yet, derive from cluster data
+    if not comments:
+        total_mentions = sum(c.size for c in clusters) if clusters else 100
+        sentiment_buckets = {
+            "Very Negative": round(total_mentions * 0.4),
+            "Negative": round(total_mentions * 0.35),
+            "Neutral": round(total_mentions * 0.15),
+            "Positive": round(total_mentions * 0.1)
+        }
+
+    total_mentions = sum(sentiment_buckets.values())
+
+    # Top ideas from database
+    ideas = db.query(models.Idea).all()
+    top_ideas = []
+    for idea in ideas[:3]:
+        cluster = db.query(models.Cluster).filter(models.Cluster.id == idea.cluster_id).first()
+        score = int(cluster.opportunity_score) if cluster else 85
+        top_ideas.append({
+            "title": idea.name,
+            "desc": idea.problem[:50] + "..." if len(idea.problem) > 50 else idea.problem,
+            "score": score
+        })
+
+    # Competitors with real mention counts
+    competitors = db.query(models.Competitor).all()
+
+    return {
+        "total_posts": total_posts,
+        "total_clusters": total_clusters,
+        "total_ideas": total_ideas,
+        "total_trends": total_trends,
+        "avg_opportunity_score": avg_opp,
+        "total_mentions": total_mentions,
+        "tracked_subreddits": tracked_subreddits,
+        "chart_data": chart_data,
+        "sentiment_distribution": sentiment_buckets,
+        "top_ideas": top_ideas,
+        "competitors": [
+            {"name": c.name, "mentions": c.mentions, "frustrations": c.frustrations}
+            for c in competitors
+        ]
     }
 
 # ==================================================

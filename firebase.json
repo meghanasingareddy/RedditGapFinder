@@ -1,0 +1,10 @@
+{
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "RedditGapFinder",
+        "supportEmail": "meghanasingareddy@gmail.com"
+      }
+    }
+  }
+}

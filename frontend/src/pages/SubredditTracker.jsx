@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { CONFIG } from '../config';
 import { Activity, Plus, Trash2, TrendingUp, RefreshCw } from 'lucide-react';
 
 function SubredditTracker() {
@@ -15,7 +16,7 @@ function SubredditTracker() {
 
   const fetchTrackers = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/subreddits');
+      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/subreddits`);
       setTrackers(res.data);
     } catch (err) {
       console.error('Error fetching subreddits:', err);
@@ -31,7 +32,7 @@ function SubredditTracker() {
 
     try {
       // Ensure r/ prefix is handled on backend, let's pass cleanly
-      const res = await axios.post('http://127.0.0.1:8000/api/subreddits', {
+      const res = await axios.post(`${CONFIG.API_BASE_URL}/api/subreddits`, {
         subreddit: newSub.trim()
       });
       setTrackers(prev => [...prev, res.data]);
@@ -45,7 +46,7 @@ function SubredditTracker() {
 
   const handleRemoveSubreddit = async (id) => {
     try {
-      await axios.delete(`http://127.0.0.1:8000/api/subreddits/${id}`);
+      await axios.delete(`${CONFIG.API_BASE_URL}/api/subreddits/${id}`);
       setTrackers(prev => prev.filter(item => item.id !== id));
     } catch (err) {
       console.error('Error untracking subreddit:', err);

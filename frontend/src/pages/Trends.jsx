@@ -1,30 +1,77 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import { CONFIG } from '../config';
 import { 
   ResponsiveContainer, 
   LineChart, Line, 
   BarChart, Bar, 
   AreaChart, Area, 
   XAxis, YAxis, 
-  CartesianGrid, Tooltip, Legend 
+  CartesianGrid, Tooltip, Legend,
+  Cell
 } from 'recharts';
 
 function Trends() {
   const [trends, setTrends] = useState([]);
   const [painPoints, setPainPoints] = useState([]);
+  const [timelineData, setTimelineData] = useState([]);
+  const [sentimentData, setSentimentData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterPeriod, setFilterPeriod] = useState('This Month');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [trendsRes, painPointsRes] = await Promise.all([
-          axios.get('http://127.0.0.1:8000/api/trends'),
-          axios.get('http://127.0.0.1:8000/api/painpoints')
+        const [trendsRes, painPointsRes, statsRes] = await Promise.all([
+          axios.get(`${CONFIG.API_BASE_URL}/api/trends`),
+          axios.get(`${CONFIG.API_BASE_URL}/api/painpoints`),
+          axios.get(`${CONFIG.API_BASE_URL}/api/stats`)
         ]);
         setTrends(trendsRes.data);
         setPainPoints(painPointsRes.data);
+
+        // Build timeline data from real pain point clusters
+        const clusters = painPointsRes.data;
+        if (clusters.length > 0) {
+          // Use cluster opportunity scores to generate a timeline-like chart
+          // Group by first word of topic name for chart series
+          const topicGroups = {};
+          clusters.forEach(c => {
+            const key = c.topic_name.split(' ')[0].replace(/[^a-zA-Z]/g, '') || 'Topic';
+            if (!topicGroups[key]) topicGroups[key] = [];
+            topicGroups[key].push(Math.round(c.opportunity_score));
+          });
+
+          // Take top 3 topic groups
+          const topGroups = Object.entries(topicGroups).slice(0, 3);
+          const maxLen = Math.max(...topGroups.map(([, v]) => v.length), 1);
+          
+          const timeline = [];
+          for (let i = 0; i < Math.min(maxLen, 5); i++) {
+            const point = { date: `Point ${i + 1}` };
+            topGroups.forEach(([key, values]) => {
+              point[key] = values[i] || values[values.length - 1] || 75;
+            });
+            timeline.push(point);
+          }
+          setTimelineData(timeline);
+        }
+
+        // Build sentiment data from stats API
+        const dist = statsRes.data.sentiment_distribution || {};
+        const colorMap = {
+          'Very Negative': '#ef4444',
+          'Negative': '#f59e0b',
+          'Neutral': '#8b7cff',
+          'Positive': '#10b981'
+        };
+        const sentiments = Object.entries(dist).map(([name, count]) => ({
+          name,
+          count,
+          fill: colorMap[name] || '#8b7cff'
+        }));
+        setSentimentData(sentiments);
       } catch (err) {
         console.error('Error fetching trends:', err);
       } finally {
@@ -34,21 +81,11 @@ function Trends() {
     fetchData();
   }, []);
 
-  // Static mock series for date filtering
-  const timelineData = [
-    { date: 'May 01', CS: 75, SaaS: 80, Finance: 65 },
-    { date: 'May 05', CS: 78, SaaS: 82, Finance: 70 },
-    { date: 'May 09', CS: 85, SaaS: 88, Finance: 72 },
-    { date: 'May 13', CS: 88, SaaS: 84, Finance: 78 },
-    { date: 'May 18', CS: 92, SaaS: 89, Finance: 85 },
-  ];
-
-  const sentimentData = [
-    { name: 'Very Negative', count: 45, fill: '#ef4444' },
-    { name: 'Negative', count: 35, fill: '#f59e0b' },
-    { name: 'Neutral', count: 15, fill: '#8b7cff' },
-    { name: 'Positive', count: 5, fill: '#10b981' }
-  ];
+  // Get dynamic series keys for the area chart
+  const seriesKeys = timelineData.length > 0 
+    ? Object.keys(timelineData[0]).filter(k => k !== 'date')
+    : [];
+  const seriesColors = ['var(--primary-color)', '#06b6d4', '#f59e0b', '#10b981'];
 
   return (
     <motion.div 
@@ -87,27 +124,41 @@ function Trends() {
           <div className="panel" style={{ height: '350px', display: 'flex', flexDirection: 'column' }}>
             <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1.5rem' }}>Opportunity Index Over Time (By Cluster Type)</h3>
             <div style={{ flex: 1 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={timelineData}>
-                  <defs>
-                    <linearGradient id="colorCS" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--primary-color)" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="var(--primary-color)" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorSaaS" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-                  <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} domain={[40, 100]} />
-                  <Tooltip contentStyle={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: '6px' }} />
-                  <Legend verticalAlign="top" height={36} iconType="circle" />
-                  <Area type="monotone" name="Career & Recruiting" dataKey="CS" stroke="var(--primary-color)" fillOpacity={1} fill="url(#colorCS)" strokeWidth={2} />
-                  <Area type="monotone" name="SaaS Subscription" dataKey="SaaS" stroke="#06b6d4" fillOpacity={1} fill="url(#colorSaaS)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {timelineData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={timelineData}>
+                    <defs>
+                      {seriesKeys.map((key, i) => (
+                        <linearGradient key={key} id={`color${key}`} x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={seriesColors[i % seriesColors.length]} stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor={seriesColors[i % seriesColors.length]} stopOpacity={0}/>
+                        </linearGradient>
+                      ))}
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+                    <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} domain={[40, 100]} />
+                    <Tooltip contentStyle={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: '6px' }} />
+                    <Legend verticalAlign="top" height={36} iconType="circle" />
+                    {seriesKeys.map((key, i) => (
+                      <Area 
+                        key={key}
+                        type="monotone" 
+                        name={key} 
+                        dataKey={key} 
+                        stroke={seriesColors[i % seriesColors.length]} 
+                        fillOpacity={1} 
+                        fill={`url(#color${key})`} 
+                        strokeWidth={2} 
+                      />
+                    ))}
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  Run a scan to generate timeline data
+                </div>
+              )}
             </div>
           </div>
 
@@ -116,19 +167,25 @@ function Trends() {
             <div className="panel" style={{ height: '320px', display: 'flex', flexDirection: 'column' }}>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1.5rem' }}>Sentiment Distribution (All Reddit Mentions)</h3>
               <div style={{ flex: 1 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sentimentData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" horizontal={false} />
-                    <XAxis type="number" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
-                    <YAxis dataKey="name" type="category" stroke="var(--text-main)" fontSize={10} tickLine={false} axisLine={false} />
-                    <Tooltip contentStyle={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: '6px' }} />
-                    <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-                      {sentimentData.map((entry, index) => (
-                        <rect key={index} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                {sentimentData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={sentimentData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" horizontal={false} />
+                      <XAxis type="number" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
+                      <YAxis dataKey="name" type="category" stroke="var(--text-main)" fontSize={10} tickLine={false} axisLine={false} />
+                      <Tooltip contentStyle={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: '6px' }} />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                        {sentimentData.map((entry, index) => (
+                          <Cell key={index} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    No sentiment data available yet
+                  </div>
+                )}
               </div>
             </div>
 

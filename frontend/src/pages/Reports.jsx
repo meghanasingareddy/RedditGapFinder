@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { CONFIG } from '../config';
 import { FileText, Download, Plus, FileSpreadsheet, Printer } from 'lucide-react';
 
 function Reports() {
@@ -16,7 +17,7 @@ function Reports() {
 
   const fetchReports = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/reports');
+      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/reports`);
       setReports(res.data);
       if (res.data.length > 0) {
         setSelectedReport(res.data[0]);
@@ -35,16 +36,19 @@ function Reports() {
 
     try {
       // Simulate generating rich reports from active pain points
-      const painPointsRes = await axios.get('http://127.0.0.1:8000/api/painpoints');
-      const ideasRes = await axios.get('http://127.0.0.1:8000/api/ideas');
+      const [painPointsRes, ideasRes, statsRes] = await Promise.all([
+        axios.get(`${CONFIG.API_BASE_URL}/api/painpoints`),
+        axios.get(`${CONFIG.API_BASE_URL}/api/ideas`),
+        axios.get(`${CONFIG.API_BASE_URL}/api/stats`)
+      ]);
       
       const metrics = {
-        posts_analyzed: 145200,
+        posts_analyzed: statsRes.data.total_posts,
         pain_points: painPointsRes.data.length * 120 + 240,
         ideas_generated: ideasRes.data.length,
         average_opp_score: Math.round(
-          painPointsRes.data.reduce((sum, item) => sum + item.opportunity_score, 0) / painPointsRes.data.length
-        ) || 82
+          painPointsRes.data.reduce((sum, item) => sum + item.opportunity_score, 0) / (painPointsRes.data.length || 1)
+        ) || statsRes.data.avg_opportunity_score || 0
       };
 
       const top_pain_points = painPointsRes.data.slice(0, 3).map((item, idx) => ({
@@ -61,7 +65,7 @@ function Reports() {
         top_pain_points
       };
 
-      const res = await axios.post('http://127.0.0.1:8000/api/reports', {
+      const res = await axios.post(`${CONFIG.API_BASE_URL}/api/reports`, {
         name: newReportName,
         data: JSON.stringify(reportData)
       });

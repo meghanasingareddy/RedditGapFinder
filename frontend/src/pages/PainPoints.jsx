@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { CONFIG } from '../config';
 import { Bookmark, X, Search, Sparkles, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 function PainPoints() {
@@ -20,7 +21,7 @@ function PainPoints() {
 
   const fetchPainPoints = async () => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/api/painpoints?sort_by=${sortBy}`);
+      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/painpoints?sort_by=${sortBy}`);
       setPainPoints(res.data);
     } catch (err) {
       console.error('Error fetching pain points:', err);
@@ -37,11 +38,11 @@ function PainPoints() {
 
     try {
       // 1. Fetch related reddit posts using keyword matching
-      const postsRes = await axios.get(`http://127.0.0.1:8000/api/posts?search=${point.keywords.split(',')[0]}`);
+      const postsRes = await axios.get(`${CONFIG.API_BASE_URL}/api/posts?search=${point.keywords.split(',')[0]}`);
       setRelatedPosts(postsRes.data.slice(0, 3));
 
       // 2. Fetch ideas and filter those matching this cluster
-      const ideasRes = await axios.get('http://127.0.0.1:8000/api/ideas');
+      const ideasRes = await axios.get(`${CONFIG.API_BASE_URL}/api/ideas`);
       const matched = ideasRes.data.filter(idea => idea.cluster_id === point.id);
       setGeneratedIdeas(matched);
     } catch (err) {
@@ -53,7 +54,7 @@ function PainPoints() {
 
   const handleBookmarkPainpoint = async (point) => {
     try {
-      await axios.post('http://127.0.0.1:8000/api/saved', {
+      await axios.post(`${CONFIG.API_BASE_URL}/api/saved`, {
         item_type: 'painpoint',
         item_id: point.id,
         name: point.topic_name,

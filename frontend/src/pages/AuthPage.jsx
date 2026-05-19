@@ -1,7 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
-import { Compass, Sparkles, TrendingUp } from "lucide-react";
+import { Sparkles, TrendingUp } from "lucide-react";
+import Logo from "../components/Logo";
 
 function AuthPage() {
   const { loginWithGoogle } = useAuth();
@@ -71,35 +72,10 @@ function AuthPage() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            gap: "0.5rem",
-            marginBottom: "1.5rem"
+            marginBottom: "2rem"
           }}
         >
-          <div
-            style={{
-              background: "linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%)",
-              padding: "0.6rem",
-              borderRadius: "12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 8px 20px rgba(139, 92, 246, 0.3)"
-            }}
-          >
-            <Compass color="#fff" size={24} />
-          </div>
-          <span
-            style={{
-              fontSize: "1.6rem",
-              fontWeight: 800,
-              background: "linear-gradient(to right, #fff 30%, rgba(255,255,255,0.7) 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              letterSpacing: "-0.5px"
-            }}
-          >
-            RedditGapFinder
-          </span>
+          <Logo size={42} showText={true} />
         </div>
 
         {/* Headline */}

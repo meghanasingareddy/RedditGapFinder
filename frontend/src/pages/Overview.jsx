@@ -2,33 +2,44 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { CONFIG } from '../config';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowUpRight, Search, Activity, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 function Overview() {
   const navigate = useNavigate();
+  const { user, loginWithGoogle } = useAuth();
   const [stats, setStats] = useState({
-    postsAnalyzed: '128.4K',
-    painPointsFound: '0',
-    startupIdeas: '0',
-    opportunityScore: '78/100'
+    postsAnalyzed: '—',
+    painPointsFound: '—',
+    startupIdeas: '—',
+    opportunityScore: '—',
+    postsChange: '',
+    painChange: '',
+    ideasChange: '',
+    oppChange: ''
   });
   const [painPoints, setPainPoints] = useState([]);
   const [discoveries, setDiscoveries] = useState([]);
+  const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [scanStep, setScanStep] = useState('');
-  const [scanInput, setScanInput] = useState('cscareerquestions');
+  const [scanInput, setScanInput] = useState('');
   const [scanModal, setScanModal] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  const chartData = [
-    { name: 'May 01', score: 72 },
-    { name: 'May 05', score: 75 },
-    { name: 'May 09', score: 81 },
-    { name: 'May 13', score: 79 },
-    { name: 'May 18', score: 87 },
-  ];
+  // Format large numbers nicely
+  const formatCount = (n) => {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return n.toString();
+  };
+
+  // Dynamic date string
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   useEffect(() => {
     fetchDashboardData();
@@ -36,22 +47,27 @@ function Overview() {
 
   const fetchDashboardData = async () => {
     try {
-      const [postsRes, painRes, ideasRes] = await Promise.all([
-        axios.get('http://127.0.0.1:8000/api/posts?limit=5'),
-        axios.get('http://127.0.0.1:8000/api/painpoints'),
-        axios.get('http://127.0.0.1:8000/api/ideas')
+      const [postsRes, painRes, ideasRes, statsRes] = await Promise.all([
+        axios.get(`${CONFIG.API_BASE_URL}/api/posts?limit=5`),
+        axios.get(`${CONFIG.API_BASE_URL}/api/painpoints`),
+        axios.get(`${CONFIG.API_BASE_URL}/api/ideas`),
+        axios.get(`${CONFIG.API_BASE_URL}/api/stats`)
       ]);
 
+      const apiStats = statsRes.data;
       setPainPoints(painRes.data.slice(0, 5));
       setDiscoveries(postsRes.data.slice(0, 3));
+      setChartData(apiStats.chart_data || []);
       
       setStats({
-        postsAnalyzed: '145.2K',
-        painPointsFound: painRes.data.length.toString(),
-        startupIdeas: ideasRes.data.length.toString(),
-        opportunityScore: `${Math.round(
-          painRes.data.reduce((sum, item) => sum + item.opportunity_score, 0) / painRes.data.length
-        ) || 82}/100`
+        postsAnalyzed: formatCount(apiStats.total_posts),
+        painPointsFound: apiStats.total_clusters.toString(),
+        startupIdeas: apiStats.total_ideas.toString(),
+        opportunityScore: `${apiStats.avg_opportunity_score}/100`,
+        postsChange: apiStats.total_posts > 0 ? `+${((apiStats.total_posts / Math.max(apiStats.total_posts - 5, 1)) * 100 - 100).toFixed(1)}%` : '',
+        painChange: apiStats.total_clusters > 0 ? `+${apiStats.total_clusters}` : '',
+        ideasChange: apiStats.total_ideas > 0 ? `+${apiStats.total_ideas}` : '',
+        oppChange: apiStats.avg_opportunity_score > 0 ? `↑ ${apiStats.avg_opportunity_score}` : ''
       });
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -94,7 +110,7 @@ function Overview() {
     }, 900);
 
     try {
-      const res = await axios.post(`http://127.0.0.1:8000/api/scan?subreddit=${scanInput}`);
+      const res = await axios.post(`${CONFIG.API_BASE_URL}/api/scan?subreddit=${scanInput}`);
       clearInterval(stepInterval);
       
       if (res.data.status === 'success') {
@@ -178,7 +194,7 @@ function Overview() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          Overview • Monday, May 18, 2026
+          Overview • {dateStr}
         </div>
       </div>
 
@@ -224,7 +240,7 @@ function Overview() {
                 transition: 'border-color 0.2s'
               }}
             />
-            <button onClick={handleScanReddit} className="btn-primary">
+            <button onClick={() => { if (!user) { loginWithGoogle(); } else { handleScanReddit(); } }} className="btn-primary">
               <Search size={14} /> Scan Reddit Now
             </button>
           </div>
@@ -248,19 +264,21 @@ function Overview() {
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--success-color)', marginTop: '0.5rem', fontWeight: 500 }}>
-            ↑ 24% vs last month
-          </div>
+          {stats.oppChange && (
+            <div style={{ fontSize: '0.75rem', color: 'var(--success-color)', marginTop: '0.5rem', fontWeight: 500 }}>
+              {stats.oppChange}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Dashboard cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
         {[
-          { label: 'Posts Analyzed', value: stats.postsAnalyzed, change: '+12.4%' },
-          { label: 'Pain Points Found', value: stats.painPointsFound, change: '+8.1%' },
-          { label: 'Startup Ideas', value: stats.startupIdeas, change: '+15.3%' },
-          { label: 'Opportunity Score', value: stats.opportunityScore, change: '+6.7%' }
+          { label: 'Posts Analyzed', value: stats.postsAnalyzed, change: stats.postsChange },
+          { label: 'Pain Points Found', value: stats.painPointsFound, change: stats.painChange },
+          { label: 'Startup Ideas', value: stats.startupIdeas, change: stats.ideasChange },
+          { label: 'Opportunity Score', value: stats.opportunityScore, change: stats.oppChange }
         ].map((stat, idx) => (
           <div key={idx} className="panel">
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{stat.label}</div>

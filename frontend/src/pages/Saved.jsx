@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { CONFIG } from '../config';
 import { Bookmark, Trash2, Lightbulb, AlertTriangle, ExternalLink } from 'lucide-react';
 
 function Saved() {
@@ -14,7 +15,7 @@ function Saved() {
 
   const fetchSavedItems = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/saved');
+      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/saved`);
       setSavedItems(res.data);
     } catch (err) {
       console.error('Error fetching saved items:', err);
@@ -25,7 +26,7 @@ function Saved() {
 
   const handleUnsave = async (id) => {
     try {
-      await axios.delete(`http://127.0.0.1:8000/api/saved/${id}`);
+      await axios.delete(`${CONFIG.API_BASE_URL}/api/saved/${id}`);
       setSavedItems(prev => prev.filter(item => item.id !== id));
     } catch (err) {
       console.error('Error deleting saved item:', err);

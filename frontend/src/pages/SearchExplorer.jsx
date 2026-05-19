@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { CONFIG } from '../config';
 import { Search, Sparkles, Activity, CheckCircle2, Bookmark, Terminal, ShieldAlert } from 'lucide-react';
 
 function SearchExplorer() {
@@ -49,7 +50,7 @@ function SearchExplorer() {
     }, 700);
 
     try {
-      const res = await axios.post(`http://127.0.0.1:8000/api/analyze?query=${encodeURIComponent(queryText)}`);
+      const res = await axios.post(`${CONFIG.API_BASE_URL}/api/analyze?query=${encodeURIComponent(queryText)}`);
       clearInterval(stepInterval);
       setResult(res.data);
     } catch (err) {
@@ -87,7 +88,7 @@ function SearchExplorer() {
 
   const handleSaveConcept = async (concept) => {
     try {
-      await axios.post('http://127.0.0.1:8000/api/saved', {
+      await axios.post(`${CONFIG.API_BASE_URL}/api/saved`, {
         item_type: 'idea',
         item_id: concept.id || 99,
         name: concept.name,
