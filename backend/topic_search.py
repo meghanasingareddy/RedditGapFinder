@@ -1,0 +1,258 @@
+import time
+import random
+import requests
+import scraper
+import nlp
+
+# Depth configurations matching the UI
+DEPTH_CONFIGS = {
+    "quick": {"subreddits": 6, "posts_per_sub": 5, "label": "Quick Insight", "expected_time": "15s"},
+    "standard": {"subreddits": 12, "posts_per_sub": 10, "label": "Standard Analysis", "expected_time": "45s"},
+    "deep": {"subreddits": 20, "posts_per_sub": 10, "label": "Deep Research", "expected_time": "90s"},
+    "market": {"subreddits": 25, "posts_per_sub": 10, "label": "Market Intelligence", "expected_time": "3m"}
+}
+
+def search_reddit_subreddits(topic: str, limit: int = 25) -> list[str]:
+    """
+    Search for subreddits related to a specific topic using Reddit's public API.
+    Bypasses authentication.
+    """
+    url = f"https://www.reddit.com/api/subreddits/search.json?q={topic}&limit={limit}"
+    print(f"[TOPIC SEARCH] Searching subreddits for '{topic}': {url}")
+    
+    try:
+        headers = {"User-Agent": scraper.USER_AGENT}
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            children = data.get("data", {}).get("children", [])
+            subreddits = []
+            
+            for child in children:
+                sub_data = child.get("data", {})
+                # Filter out NSFW subreddits to remain safe
+                if sub_data.get("over18"):
+                    continue
+                display_name = sub_data.get("display_name")
+                if display_name:
+                    subreddits.append(display_name)
+                    
+            print(f"[TOPIC SEARCH] Found {len(subreddits)} subreddits for topic '{topic}'.")
+            return subreddits
+        else:
+            print(f"[TOPIC SEARCH] Reddit search API returned status {response.status_code}")
+    except Exception as e:
+        print(f"[TOPIC SEARCH] Error searching subreddits: {e}")
+        
+    return []
+
+def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=None) -> dict:
+    """
+    Executes a thorough crawl and NLP pipeline analysis for a given topic.
+    Returns a unified dashboard payload.
+    """
+    depth_normalized = depth.lower().strip() if depth else "standard"
+    depth_map = {
+        "quick_insight": "quick",
+        "standard_analysis": "standard",
+        "deep_research": "deep",
+        "market_intelligence": "market"
+    }
+    resolved_depth = depth_map.get(depth_normalized, depth_normalized)
+    depth_key = resolved_depth if resolved_depth in DEPTH_CONFIGS else "standard"
+    cfg = DEPTH_CONFIGS[depth_key]
+    
+    # 1. Search for subreddits
+    if progress_callback:
+        progress_callback("Searching subreddits...", 0, cfg["subreddits"])
+        
+    raw_subreddits = search_reddit_subreddits(topic, limit=cfg["subreddits"] + 5)
+    
+    # Fallback default subreddits if search failed completely
+    if not raw_subreddits:
+        print("[TOPIC SEARCH] No subreddits found or search failed. Using fallback keywords.")
+        raw_subreddits = [topic, f"{topic}dev", f"{topic}talk", f"ask{topic}", f"{topic}trends"]
+        
+    subreddits_to_scan = raw_subreddits[:cfg["subreddits"]]
+    total_subs = len(subreddits_to_scan)
+    
+    corpus_posts = []
+    scanned_subs_list = []
+    
+    # 2. Fetch posts from RSS feeds (or mock fallback if RSS fails)
+    for idx, sub_name in enumerate(subreddits_to_scan):
+        clean_sub = sub_name.replace("r/", "")
+        display_sub = f"r/{clean_sub}"
+        
+        if progress_callback:
+            progress_callback(f"Scanning {display_sub}...", idx + 1, total_subs)
+            
+        print(f"[TOPIC SEARCH] [{idx+1}/{total_subs}] Scraping feed for '{display_sub}'")
+        
+        # Scrape posts (first RSS, then simulated fallback)
+        posts = scraper.scrape_subreddit(clean_sub, limit=cfg["posts_per_sub"])
+        
+        if posts:
+            scanned_subs_list.append(display_sub)
+            for p in posts:
+                # Add subreddit metadata back if missing
+                p["subreddit"] = display_sub
+                corpus_posts.append(p)
+                
+        # Small dynamic delay to be polite to Reddit's RSS endpoints
+        if not scraper.is_using_mock_fallback() and idx < total_subs - 1:
+            time.sleep(random.uniform(0.1, 0.3))
+            
+    # Process corpus
+    if not corpus_posts:
+        print("[TOPIC SEARCH] Corpus is empty. Generating fallback posts.")
+        corpus_posts = scraper.generate_contextual_posts(topic, limit=15)
+        scanned_subs_list = [f"r/{topic.lower()}"]
+        for p in corpus_posts:
+            p["subreddit"] = f"r/{topic.lower()}"
+            
+    # 3. Sentiment Analysis and NLP Clustering
+    if progress_callback:
+        progress_callback("Running NLP Sentiment & Clustering...", total_subs, total_subs)
+        
+    text_corpus = []
+    posts_by_id = {}
+    sentiment_sum = 0.0
+    
+    for p in corpus_posts:
+        title = p["title"] or ""
+        body = nlp.clean_text(p["selftext"] or "")
+        combined_text = title + " " + body
+        
+        sentiment = nlp.analyze_sentiment(combined_text)
+        p["sentiment"] = sentiment
+        sentiment_sum += sentiment
+        
+        text_corpus.append(combined_text)
+        posts_by_id[p["id"]] = p
+        
+    # Execute clustering
+    model_or_fallback, topics = nlp.cluster_texts(text_corpus)
+    unique_topics = list(set(topics))
+    
+    clusters = []
+    chart_data = []
+    ideas = []
+    
+    # 4. Aggregate Clusters (Pain Points)
+    for topic_idx, raw_topic in enumerate(unique_topics):
+        if isinstance(raw_topic, int) or str(raw_topic).lstrip('-').isdigit():
+            t_idx = int(raw_topic)
+            if t_idx == -1:
+                topic_name = "General Frustration"
+            elif model_or_fallback != "FallbackClustering" and hasattr(model_or_fallback, "get_topic"):
+                try:
+                    words = [w[0] for w in model_or_fallback.get_topic(t_idx)]
+                    topic_name = " ".join(words[:3]).title()
+                except Exception:
+                    topic_name = f"Frustrations {t_idx}"
+            else:
+                topic_name = f"Frustrations {t_idx}"
+        else:
+            topic_name = str(raw_topic)
+            
+        if topic_name == "General Frustration" or not topic_name.strip():
+            continue
+            
+        # Get docs in this cluster
+        topic_docs = [text_corpus[i] for i, t in enumerate(topics) if t == raw_topic]
+        
+        # Calculate cluster specific sentiment
+        cluster_sentiments = [p["sentiment"] for i, p in enumerate(corpus_posts) if topics[i] == raw_topic]
+        avg_cluster_sent = sum(cluster_sentiments) / len(cluster_sentiments) if cluster_sentiments else 0.0
+        
+        # Calculate opportunity score (negative sentiment = higher opportunity)
+        opp_score = int(80 + (avg_cluster_sent * -25) + (len(topic_docs) * 1.5))
+        opp_score = max(60, min(98, opp_score))
+        
+        keywords = ", ".join(topic_name.split(" ")[-2:]) if " " in topic_name else topic_name
+        
+        # Format painpoint (matches ClusterBase)
+        cluster_data = {
+            "id": topic_idx + 1000,  # Offset to prevent conflict
+            "topic_name": topic_name,
+            "keywords": keywords,
+            "size": len(topic_docs),
+            "opportunity_score": float(opp_score)
+        }
+        clusters.append(cluster_data)
+        
+        # Format chart data
+        chart_data.append({
+            "name": topic_name[:15],
+            "score": opp_score
+        })
+        
+        # Generate startup ideas
+        idea_template = nlp.generate_idea_from_cluster(topic_name, topic_docs)
+        ideas.append({
+            "id": topic_idx + 2000,
+            "cluster_id": topic_idx + 1000,
+            "name": idea_template["name"],
+            "problem": idea_template["problem"],
+            "audience": idea_template["audience"],
+            "features": idea_template["features"],
+            "revenue_model": idea_template["revenue_model"],
+            "score": opp_score
+        })
+        
+    # Sort clusters and ideas by opportunity score descending
+    clusters.sort(key=lambda x: x["opportunity_score"], reverse=True)
+    ideas.sort(key=lambda x: x["score"], reverse=True)
+    
+    # Calculate aggregate stats
+    total_posts = len(corpus_posts)
+    avg_opportunity = round(sum(c["opportunity_score"] for c in clusters) / len(clusters), 1) if clusters else 0.0
+    
+    # Sentiment distribution
+    sentiment_distribution = {"Very Negative": 0, "Negative": 0, "Neutral": 0, "Positive": 0}
+    for p in corpus_posts:
+        s = p["sentiment"]
+        if s < -0.3:
+            sentiment_distribution["Very Negative"] += 1
+        elif s < 0:
+            sentiment_distribution["Negative"] += 1
+        elif s < 0.3:
+            sentiment_distribution["Neutral"] += 1
+        else:
+            sentiment_distribution["Positive"] += 1
+            
+    # Compile stats output
+    stats = {
+        "total_posts": total_posts,
+        "total_clusters": len(clusters),
+        "total_ideas": len(ideas),
+        "avg_opportunity_score": avg_opportunity,
+        "sentiment_distribution": sentiment_distribution,
+        "scanned_subreddits": scanned_subs_list
+    }
+    
+    # Format discoveries list (matches Post schema)
+    discoveries = []
+    for p in corpus_posts[:5]:  # Top 5 discoveries
+        discoveries.append({
+            "id": p["id"],
+            "subreddit": p["subreddit"],
+            "title": p["title"],
+            "selftext": p["selftext"][:300] + "..." if len(p["selftext"] or "") > 300 else p["selftext"],
+            "url": p["url"],
+            "score": p["score"],
+            "created_utc": p["created_utc"]
+        })
+        
+    return {
+        "status": "success",
+        "topic": topic,
+        "depth": depth_key,
+        "stats": stats,
+        "clusters": clusters,
+        "ideas": ideas,
+        "chart_data": chart_data[:6],  # Top 6 for chart readability
+        "discoveries": discoveries
+    }

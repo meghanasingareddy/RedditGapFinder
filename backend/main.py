@@ -4,11 +4,24 @@ from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
+from pydantic import BaseModel
 
 import models, schemas
 import scraper
 import nlp
+import topic_search
 from database import engine, get_db, SessionLocal, seed_database
+
+# Topic search caching: {(topic, depth): {"timestamp": float, "payload": dict}}
+topic_search_cache = {}
+
+# Topic search rate limiting: {topic: timestamp}
+topic_rate_limit = {}
+
+# Request model for Topic Search
+class TopicSearchRequest(BaseModel):
+    topic: str
+    depth: Optional[str] = "standard"
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -428,6 +441,112 @@ def analyze_query(query: str = Query(..., description="Query to analyze, e.g., '
 def random_opportunity_score():
     import random
     return random.uniform(70.0, 95.0)
+
+# ==================================================
+# TOPIC SEARCH SUITE (NEW)
+# ==================================================
+
+@app.post("/api/search/topic")
+def post_search_topic(request: TopicSearchRequest):
+    topic_clean = request.topic.strip().lower()
+    depth_clean = request.depth.strip().lower() if request.depth else "standard"
+    
+    cache_key = (topic_clean, depth_clean)
+    now = time.time()
+    
+    # 1. Cache lookup (24 hours = 86400 seconds)
+    if cache_key in topic_search_cache:
+        cached_entry = topic_search_cache[cache_key]
+        if now - cached_entry["timestamp"] < 86400:
+            print(f"[CACHE HIT] Returning cached analysis for '{request.topic}' ({depth_clean})")
+            return cached_entry["payload"]
+            
+    # 2. Rate Limiting (60 seconds cooldown per topic)
+    if topic_clean in topic_rate_limit:
+        last_request_time = topic_rate_limit[topic_clean]
+        elapsed = now - last_request_time
+        if elapsed < 60:
+            remaining = int(60 - elapsed)
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit active for '{request.topic}'. Please wait {remaining} seconds before analyzing this topic again."
+            )
+            
+    # 3. Update rate limit timestamp
+    topic_rate_limit[topic_clean] = now
+    
+    # 4. Execute Analysis
+    try:
+        payload = topic_search.run_topic_analysis(request.topic, depth=depth_clean)
+        
+        # 5. Save to Cache
+        topic_search_cache[cache_key] = {
+            "timestamp": now,
+            "payload": payload
+        }
+        return payload
+    except Exception as e:
+        # Clear rate limit if it errored, so the user can try again
+        if topic_clean in topic_rate_limit:
+            del topic_rate_limit[topic_clean]
+        raise HTTPException(
+            status_code=500,
+            detail=f"Analysis failed: {str(e)}"
+        )
+
+@app.get("/api/subreddits/suggest")
+def get_subreddit_suggestions(q: str = Query(..., description="Autocomplete query")):
+    query_clean = q.strip().lower()
+    if len(query_clean) < 2:
+        return []
+    suggestions = topic_search.search_reddit_subreddits(query_clean, limit=10)
+    return suggestions
+
+@app.get("/api/topics/trending")
+def get_trending_topics():
+    return [
+        {"topic": "AI", "category": "Tech"},
+        {"topic": "ChatGPT", "category": "Tech"},
+        {"topic": "Machine Learning", "category": "Tech"},
+        {"topic": "Tech Startups", "category": "Business"},
+        {"topic": "SaaS Tools", "category": "Software"},
+        {"topic": "Developer Tools", "category": "Software"},
+        {"topic": "Remote Work", "category": "Lifestyle"},
+        {"topic": "Side Hustles", "category": "Finance"},
+        {"topic": "Freelancing", "category": "Lifestyle"},
+        {"topic": "Time Management", "category": "Productivity"},
+        {"topic": "Productivity", "category": "Productivity"},
+        {"topic": "Entrepreneurship", "category": "Business"},
+        {"topic": "Fitness & Nutrition", "category": "Health"},
+        {"topic": "Mental Health", "category": "Health"},
+        {"topic": "Biohacking", "category": "Health"},
+        {"topic": "Longevity", "category": "Health"},
+        {"topic": "Sleep Optimization", "category": "Health"},
+        {"topic": "Crypto & Bitcoin", "category": "Finance"},
+        {"topic": "Personal Finance", "category": "Finance"},
+        {"topic": "Investing", "category": "Finance"},
+        {"topic": "Passive Income", "category": "Finance"},
+        {"topic": "FIRE Movement", "category": "Finance"},
+        {"topic": "Sustainability", "category": "Lifestyle"},
+        {"topic": "Climate Change", "category": "Lifestyle"},
+        {"topic": "Sustainable Fashion", "category": "Style"},
+        {"topic": "Minimalism", "category": "Lifestyle"},
+        {"topic": "Digital Nomad", "category": "Lifestyle"},
+        {"topic": "Work-Life Balance", "category": "Lifestyle"},
+        {"topic": "Indie Games", "category": "Gaming"},
+        {"topic": "Gaming", "category": "Gaming"},
+        {"topic": "Streetwear", "category": "Style"},
+        {"topic": "Fashion", "category": "Style"},
+        {"topic": "Beauty & Skincare", "category": "Style"},
+        {"topic": "Career Growth", "category": "Lifestyle"},
+        {"topic": "Job Searching", "category": "Lifestyle"},
+        {"topic": "Online Learning", "category": "Lifestyle"},
+        {"topic": "Coding Bootcamps", "category": "Tech"},
+        {"topic": "Parenting", "category": "Lifestyle"},
+        {"topic": "Relationships", "category": "Lifestyle"},
+        {"topic": "Travel Hacking", "category": "Lifestyle"},
+        {"topic": "Pet Care", "category": "Lifestyle"}
+    ]
 
 # ==================================================
 # PAIN POINTS (CLUSTERS)
