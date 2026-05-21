@@ -21,6 +21,7 @@ import requests
 import xml.etree.ElementTree as ET
 import html
 import re
+import json
 
 # We use standard user agent to avoid being blocked by feed servers
 USER_AGENT = os.getenv("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
@@ -45,6 +46,10 @@ def clean_html(raw_html: str) -> str:
     # Unescape HTML entities (e.g. &amp;, &lt;, &gt;)
     return html.unescape(cleantext).strip()
 
+# ==============================================================
+# RSS/ATOM FEED PARSER
+# ==============================================================
+
 def parse_rss_or_atom(xml_content: bytes, limit: int = 100):
     posts = []
     try:
@@ -59,25 +64,48 @@ def parse_rss_or_atom(xml_content: bytes, limit: int = 100):
                 entries = root.findall('entry')
                 
             for i, entry in enumerate(entries[:limit]):
-                title_elem = entry.find('atom:title', ns) or entry.find('title')
+                # IMPORTANT: XML elements with no children are falsy in Python,
+                # so we must use `is not None` instead of `or` for fallback lookups.
+                title_elem = entry.find('atom:title', ns)
+                if title_elem is None:
+                    title_elem = entry.find('title')
                 title = title_elem.text if title_elem is not None else "Untitled Post"
                 
-                id_elem = entry.find('atom:id', ns) or entry.find('id')
+                id_elem = entry.find('atom:id', ns)
+                if id_elem is None:
+                    id_elem = entry.find('id')
                 raw_id = id_elem.text if id_elem is not None else f"atom_{int(time.time())}_{i}_{random.randint(100,999)}"
-                post_id = raw_id.split('_')[-1] if '_' in raw_id else raw_id
+                # Extract Reddit post ID from t3_xxxxx or URL format
+                post_id = _extract_reddit_id(raw_id) or f"rss_{i}_{int(time.time())}"
                 
-                link_elem = entry.find('atom:link', ns) or entry.find('link')
+                link_elem = entry.find('atom:link', ns)
+                if link_elem is None:
+                    link_elem = entry.find('link')
                 if link_elem is not None:
-                    post_url = link_elem.attrib.get('href', '') if 'href' in link_elem.attrib else link_elem.text
+                    post_url = link_elem.attrib.get('href', '') if 'href' in link_elem.attrib else (link_elem.text or '')
                 else:
                     post_url = "https://reddit.com"
                 
-                content_elem = entry.find('atom:content', ns) or entry.find('content') or entry.find('atom:summary', ns) or entry.find('summary')
+                # Also try to extract post ID from link URL
+                if post_id.startswith("rss_"):
+                    link_id = _extract_reddit_id(post_url)
+                    if link_id:
+                        post_id = link_id
+                
+                content_elem = entry.find('atom:content', ns)
+                if content_elem is None:
+                    content_elem = entry.find('content')
+                if content_elem is None:
+                    content_elem = entry.find('atom:summary', ns)
+                if content_elem is None:
+                    content_elem = entry.find('summary')
                 raw_content = content_elem.text if content_elem is not None else ""
                 selftext = clean_html(raw_content)
                 selftext = selftext[:2000]
                 
-                updated_elem = entry.find('atom:updated', ns) or entry.find('updated')
+                updated_elem = entry.find('atom:updated', ns)
+                if updated_elem is None:
+                    updated_elem = entry.find('updated')
                 created_utc = time.time()
                 if updated_elem is not None and updated_elem.text:
                     try:
@@ -91,7 +119,7 @@ def parse_rss_or_atom(xml_content: bytes, limit: int = 100):
                     "id": post_id,
                     "title": title,
                     "selftext": selftext,
-                    "url": post_url,
+                    "url": post_url or "https://reddit.com",
                     "score": random.randint(50, 450),
                     "created_utc": created_utc
                 })
@@ -105,14 +133,18 @@ def parse_rss_or_atom(xml_content: bytes, limit: int = 100):
                 title_elem = item.find('title')
                 title = title_elem.text if title_elem is not None else "Untitled Post"
                 
-                guid_elem = item.find('guid') or item.find('id')
+                guid_elem = item.find('guid')
+                if guid_elem is None:
+                    guid_elem = item.find('id')
                 raw_id = guid_elem.text if guid_elem is not None else f"rss_{int(time.time())}_{i}_{random.randint(100,999)}"
-                post_id = raw_id.split('/')[-1].split('_')[-1] if '/' in raw_id else raw_id
+                post_id = _extract_reddit_id(raw_id) or raw_id.split('/')[-1]
                 
                 link_elem = item.find('link')
                 post_url = link_elem.text if link_elem is not None else "https://reddit.com"
                 
-                desc_elem = item.find('description') or item.find('content')
+                desc_elem = item.find('description')
+                if desc_elem is None:
+                    desc_elem = item.find('content')
                 raw_content = desc_elem.text if desc_elem is not None else ""
                 selftext = clean_html(raw_content)
                 selftext = selftext[:2000]
@@ -139,50 +171,178 @@ def parse_rss_or_atom(xml_content: bytes, limit: int = 100):
         
     return posts
 
+def _extract_reddit_id(url_or_id: str) -> str | None:
+    """Extract the Reddit post ID from a URL like /r/sub/comments/abc123/..."""
+    match = re.search(r'/comments/([a-z0-9]+)', url_or_id, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    # Try t3_ format
+    match = re.search(r't3_([a-z0-9]+)', url_or_id, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+# ==============================================================
+# REDDIT RSS FEED SCRAPER (Primary data source — no auth needed)
+# ==============================================================
+
+def fetch_reddit_rss(subreddit_name: str, limit: int = 25, sort: str = "hot") -> list[dict]:
+    """
+    Fetch real posts from Reddit's public RSS/Atom feed.
+    No authentication required.
+    
+    Args:
+        subreddit_name: Subreddit name (e.g., 'SaaS', 'startups') or full RSS URL
+        limit: Max posts to return
+        sort: Feed sort order — 'hot', 'new', 'top', 'rising'
+        
+    Returns:
+        List of post dicts with keys: id, title, selftext, url, score, created_utc
+    """
+    subreddit_name = subreddit_name.strip()
+    
+    # Build the RSS URL
+    if subreddit_name.startswith("http://") or subreddit_name.startswith("https://"):
+        url = subreddit_name
+        print(f"[RSS] Fetching custom feed URL: {url}")
+    else:
+        clean_sub = subreddit_name.replace("r/", "")
+        url = f"https://www.reddit.com/r/{clean_sub}/{sort}.rss"
+        print(f"[RSS] Fetching r/{clean_sub}/{sort} feed: {url}")
+    
+    try:
+        headers = {"User-Agent": USER_AGENT}
+        response = requests.get(url, headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            posts = parse_rss_or_atom(response.content, limit)
+            if posts:
+                print(f"[RSS] OK - Parsed {len(posts)} real posts from feed.")
+                return posts
+            else:
+                print(f"[RSS] Feed returned valid XML but no posts found.")
+        elif response.status_code == 429:
+            print(f"[RSS] Rate limited (429). Waiting 5s and retrying once...")
+            time.sleep(5)
+            response = requests.get(url, headers=headers, timeout=15)
+            if response.status_code == 200:
+                posts = parse_rss_or_atom(response.content, limit)
+                if posts:
+                    print(f"[RSS] OK - Retry succeeded, parsed {len(posts)} posts.")
+                    return posts
+        else:
+            print(f"[RSS] Feed returned status {response.status_code}")
+            
+    except requests.exceptions.Timeout:
+        print(f"[RSS] Request timed out for {url}")
+    except requests.exceptions.ConnectionError:
+        print(f"[RSS] Connection error for {url}")
+    except Exception as e:
+        print(f"[RSS] Error fetching feed: {e}")
+    
+    return []
+
+# ==============================================================
+# REDDIT JSON COMMENT SCRAPER (No auth needed)
+# ==============================================================
+
+def fetch_reddit_comments(post_id: str, limit: int = 25) -> list[dict]:
+    """
+    Fetch real comments from Reddit's public JSON API.
+    No authentication required.
+    
+    URL format: https://www.reddit.com/comments/{post_id}.json
+    """
+    url = f"https://www.reddit.com/comments/{post_id}.json"
+    print(f"[COMMENTS] Fetching real comments for post {post_id}: {url}")
+    
+    try:
+        headers = {"User-Agent": USER_AGENT}
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            # Reddit JSON returns [post_data, comments_data]
+            if isinstance(data, list) and len(data) >= 2:
+                comments_listing = data[1].get("data", {}).get("children", [])
+                comments = []
+                
+                for child in comments_listing[:limit]:
+                    if child.get("kind") != "t1":
+                        continue
+                    c_data = child.get("data", {})
+                    body = c_data.get("body", "")
+                    if not body or body == "[deleted]" or body == "[removed]":
+                        continue
+                    
+                    comments.append({
+                        "id": c_data.get("id", f"c_{int(time.time())}"),
+                        "post_id": post_id,
+                        "body": body[:2000],
+                        "score": c_data.get("score", 0)
+                    })
+                
+                if comments:
+                    print(f"[COMMENTS] OK - Fetched {len(comments)} real comments.")
+                    return comments
+                else:
+                    print(f"[COMMENTS] No valid comments found in JSON response.")
+        elif response.status_code == 429:
+            print(f"[COMMENTS] Rate limited. Using mock comments.")
+        else:
+            print(f"[COMMENTS] Got status {response.status_code}")
+            
+    except Exception as e:
+        print(f"[COMMENTS] Error fetching comments: {e}")
+    
+    return []
+
+# ==============================================================
+# MAIN SCRAPER ENTRY POINTS (used by main.py)
+# ==============================================================
+
 def scrape_subreddit(subreddit_name: str, limit: int = 100):
+    """
+    Main entry point for scraping subreddit posts.
+    Priority: 1) Real RSS feed  2) Mock fallback
+    """
     subreddit_name = subreddit_name.strip()
     
     # Check if we are running in mock fallback
     if is_using_mock_fallback():
         print(f"[SCRAPER] Using forced mock fallback for '{subreddit_name}'.")
         return generate_contextual_posts(subreddit_name, limit)
-        
-    # Check if a custom RSS URL was provided
-    if subreddit_name.startswith("http://") or subreddit_name.startswith("https://"):
-        url = subreddit_name
-        print(f"[SCRAPER] Fetching custom RSS feed: {url}")
-    else:
-        # Standard subreddit name -> use native Reddit RSS
-        clean_sub = subreddit_name.replace("r/", "")
-        url = f"https://www.reddit.com/r/{clean_sub}/hot.rss"
-        print(f"[SCRAPER] Fetching Reddit RSS feed for r/{clean_sub}: {url}")
-        
-    try:
-        headers = {
-            "User-Agent": USER_AGENT
-        }
-        response = requests.get(url, headers=headers, timeout=10)
-        
-        if response.status_code == 200:
-            posts = parse_rss_or_atom(response.content, limit)
-            if posts:
-                print(f"[SCRAPER] Successfully parsed {len(posts)} posts from RSS feed.")
-                return posts
-            else:
-                print(f"[SCRAPER] XML parsed but no posts found. Falling back to simulated data.")
-        else:
-            print(f"[SCRAPER] Received status code {response.status_code} from feed. Falling back to simulated data.")
-            
-    except Exception as e:
-        print(f"[SCRAPER] Error fetching RSS feed: {e}. Falling back to simulated data.")
-        
-    # Standard graceful fallback to mock data
+    
+    # Try real RSS feed first
+    posts = fetch_reddit_rss(subreddit_name, limit)
+    if posts:
+        return posts
+    
+    # Graceful fallback to mock data
+    print(f"[SCRAPER] RSS feed failed for '{subreddit_name}'. Falling back to simulated data.")
     return generate_contextual_posts(subreddit_name, limit)
 
 def scrape_comments(post_id: str, limit: int = 50):
-    # RSS feeds don't have deep comment threads, so we leverage mock comments seamlessly
-    print(f"[SCRAPER] Providing high-fidelity mock comments for post '{post_id}'.")
+    """
+    Main entry point for scraping comments on a post.
+    Priority: 1) Real Reddit JSON  2) Mock fallback
+    """
+    if is_using_mock_fallback():
+        print(f"[SCRAPER] Using mock comments for post '{post_id}' (FORCE_MOCK_DATA=true).")
+        return generate_contextual_comments(post_id, limit)
+    
+    # Try real Reddit JSON comments first
+    comments = fetch_reddit_comments(post_id, limit)
+    if comments:
+        return comments
+    
+    # Fallback to mock
+    print(f"[SCRAPER] Real comments unavailable for '{post_id}'. Using mock comments.")
     return generate_contextual_comments(post_id, limit)
+
+# ==============================================================
+# MOCK DATA GENERATORS (Fallback only)
+# ==============================================================
 
 def generate_contextual_posts(subreddit_name: str, limit: int):
     # Context-aware mock post generator
