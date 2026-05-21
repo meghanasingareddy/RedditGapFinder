@@ -1,37 +1,85 @@
 .app-container {
   display: grid;
-  grid-template-columns: 240px 1fr 300px;
-  min-height: 100vh;
+  /* Columns configured dynamically in JSX: grid-template-columns: leftWidth 6px 1fr 6px rightWidth */
+  height: 100vh;
   width: 100%;
+  overflow: hidden;
 }
 
 .left-sidebar {
   background: var(--bg-color);
-  border-right: 1px solid var(--border-color);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  position: sticky;
-  top: 0;
+  overflow-y: auto;
 }
 
 .center-content {
   background: var(--bg-color);
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
   overflow-y: auto;
 }
 
 .right-sidebar {
   background: var(--bg-color);
-  border-left: 1px solid var(--border-color);
   padding: 1.5rem;
   height: 100vh;
-  position: sticky;
-  top: 0;
   overflow-y: auto;
+}
+
+/* Custom Draggable Layout Dividers */
+.layout-divider {
+  width: 6px;
+  height: 100vh;
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* Central sleek line inside the divider */
+.layout-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background-color: var(--border-color);
+  transform: translateX(-50%);
+  transition: background-color 0.2s ease, width 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover or active: glowing signature primary line */
+.layout-divider:hover::before,
+.layout-divider.active::before {
+  background-color: var(--primary-color);
+  width: 2px;
+  box-shadow: 0 0 8px var(--primary-color), 0 0 16px var(--primary-color);
+}
+
+/* Enforce smooth dragging without mouse pointer-event interference */
+.app-container.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.app-container.is-resizing * {
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+.app-container.is-resizing .layout-divider {
+  pointer-events: auto !important;
 }
 
 .top-navbar {

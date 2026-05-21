@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
@@ -186,10 +186,65 @@ function AppContent() {
 
   const isMockUser = user && user.uid === "mock-dev-user-id";
 
+  const [leftWidth, setLeftWidth] = useState(240);
+  const [rightWidth, setRightWidth] = useState(300);
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [isResizingRight, setIsResizingRight] = useState(false);
+
+  const startResizeLeft = (e) => {
+    e.preventDefault();
+    setIsResizingLeft(true);
+  };
+
+  const startResizeRight = (e) => {
+    e.preventDefault();
+    setIsResizingRight(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isResizingLeft) {
+        const newWidth = Math.max(180, Math.min(400, e.clientX));
+        setLeftWidth(newWidth);
+      } else if (isResizingRight) {
+        const newWidth = Math.max(240, Math.min(480, window.innerWidth - e.clientX));
+        setRightWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingLeft(false);
+      setIsResizingRight(false);
+    };
+
+    if (isResizingLeft || isResizingRight) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingLeft, isResizingRight]);
+
   // Dashboard is always visible — no auth wall
   return (
-    <div className="app-container">
+    <div 
+      className={`app-container ${isResizingLeft || isResizingRight ? 'is-resizing' : ''}`}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: `${leftWidth}px 6px 1fr 6px ${rightWidth}px`,
+        height: '100vh',
+        overflow: 'hidden'
+      }}
+    >
       <LeftSidebar />
+      
+      <div 
+        className={`layout-divider left-divider ${isResizingLeft ? 'active' : ''}`}
+        onMouseDown={startResizeLeft}
+      />
       
       <div className="center-content">
         <TopNavbar />
@@ -316,6 +371,11 @@ function AppContent() {
           </AnimatePresence>
         </main>
       </div>
+
+      <div 
+        className={`layout-divider right-divider ${isResizingRight ? 'active' : ''}`}
+        onMouseDown={startResizeRight}
+      />
 
       <RightSidebar />
     </div>
