@@ -119,7 +119,8 @@ function Overview() {
       }
     } catch (err) {
       clearInterval(stepInterval);
-      showToast('Scan completed. Syncing latest data from databases.', 'success');
+      const errMsg = err.response?.data?.detail || err.message || 'Error scanning subreddit';
+      showToast(errMsg, 'error');
       fetchDashboardData();
       console.error('Error scanning subreddit:', err);
     } finally {

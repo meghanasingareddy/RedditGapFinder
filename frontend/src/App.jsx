@@ -309,6 +309,7 @@ function AppContent() {
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
               <Route path="/saved" element={<ProtectedRoute><Saved /></ProtectedRoute>} />
               <Route path="/tracker" element={<ProtectedRoute><SubredditTracker /></ProtectedRoute>} />
+              <Route path="/subreddits" element={<ProtectedRoute><SubredditTracker /></ProtectedRoute>} />
 
               <Route path="*" element={<Overview />} />
             </Routes>

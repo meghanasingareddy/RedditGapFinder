@@ -34,7 +34,7 @@ function LeftSidebar() {
   }, []);
 
   // Pages that require authentication
-  const protectedPaths = ['/search', '/reports', '/saved', '/tracker'];
+  const protectedPaths = ['/search', '/reports', '/saved', '/subreddits'];
 
   const renderNavLink = (to, icon, label) => {
     const isProtected = protectedPaths.includes(to);
@@ -71,7 +71,7 @@ function LeftSidebar() {
       <div className="sidebar-section">
         <div className="sidebar-title">Monitoring</div>
         {renderNavLink('/competitors', <Eye size={16} />, 'Competitors')}
-        {renderNavLink('/tracker', <Activity size={16} />, 'Subreddit Tracker')}
+        {renderNavLink('/subreddits', <Activity size={16} />, 'Subreddit Tracker')}
       </div>
 
       <div style={{ marginTop: 'auto' }}>

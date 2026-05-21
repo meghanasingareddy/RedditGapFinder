@@ -246,9 +246,26 @@ def scan_reddit(
         parsed_url = urlparse(clean_sub)
         domain = parsed_url.netloc or "custom_feed"
         subreddit_db_value = f"RSS ({domain})"
+        compare_value = clean_sub.lower()
     else:
         clean_sub = clean_sub.replace("r/", "")
         subreddit_db_value = f"r/{clean_sub}"
+        compare_value = f"r/{clean_sub.lower()}"
+
+    # Verify if this subreddit exists in the tracked subreddits list
+    tracked_subreddits = db.query(models.SubredditTracker).all()
+    is_tracked = False
+    for t in tracked_subreddits:
+        t_sub = t.subreddit.strip().lower()
+        if t_sub == compare_value or t_sub.replace("r/", "") == compare_value.replace("r/", ""):
+            is_tracked = True
+            break
+            
+    if not is_tracked:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Subreddit '{subreddit}' is not in your tracked list. Please add it to the tracker first."
+        )
     
     # 1. Scrape posts
     scraped_posts = scraper.scrape_subreddit(clean_sub, limit=10)
