@@ -35,12 +35,19 @@ def startup_event():
 
 import os
 
-# Parse Allowed Origins from env (comma-separated, default is "*")
-allowed_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "*")
-if allowed_origins_str == "*":
-    origins = ["*"]
-else:
+# Parse Allowed Origins from env (comma-separated)
+# In production, set CORS_ALLOWED_ORIGINS to your frontend URL(s)
+allowed_origins_str = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if allowed_origins_str:
     origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+else:
+    # Default origins for development + production
+    origins = [
+        "https://frontend-xi-taupe-49.vercel.app",  # Vercel production frontend
+        "http://localhost:5173",                      # Vite dev server
+        "http://localhost:3000",                      # Alternative dev server
+        "http://127.0.0.1:5173",                     # Vite dev server (IP)
+    ]
 
 app.add_middleware(
     CORSMiddleware,
