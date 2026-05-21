@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sun, Bell, ChevronDown, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw, LogIn } from 'lucide-react';
+import { Search, Sun, Bell, ChevronDown, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw, RotateCcw, LogIn, Menu } from 'lucide-react';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { useAuth } from '../context/AuthContext';
+import { useTopic } from '../context/TopicContext';
 
-function TopNavbar() {
+import Logo from './Logo';
+
+function TopNavbar({ onToggleMenu }) {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState({ loading: true, online: false, mode: 'offline', details: '', reddit_client_configured: false });
   const [showTooltip, setShowTooltip] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
   const { user, loginWithGoogle, logout } = useAuth();
+  const { activeTopicSearch, clearTopicSearch } = useTopic();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleKeyDown = (e) => {
@@ -194,23 +198,83 @@ function TopNavbar() {
         }
       `}</style>
 
-      <div style={{ position: 'relative' }}>
-        <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-        <input 
-          type="text" 
-          placeholder="Search problems, subreddits, topics..." 
-          className="search-bar"
-          style={{ paddingLeft: '2.5rem' }}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
-        <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: 'var(--text-muted)', border: '1px solid var(--border-color)', padding: '2px 6px', borderRadius: '4px' }}>
-          Enter
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+        <button 
+          onClick={onToggleMenu}
+          className="mobile-menu-toggle"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-main)',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <Menu size={20} />
+        </button>
+        
+        <Logo size={24} />
+        
+        <div className="navbar-search-wrapper" style={{ position: 'relative', flex: 1, maxWidth: '420px' }}>
+          <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <input 
+            type="text" 
+            placeholder="Search problems, subreddits, topics..." 
+            className="search-bar"
+            style={{ paddingLeft: '2.5rem', width: '100%', boxSizing: 'border-box', color: '#ffffff' }}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: 'var(--text-muted)', border: '1px solid var(--border-color)', padding: '2px 6px', borderRadius: '4px' }}>
+            Enter
+          </div>
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+        {activeTopicSearch && (
+          <button
+            onClick={() => {
+              clearTopicSearch();
+              navigate('/');
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '0.725rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              color: '#ef4444',
+              letterSpacing: '0.02em',
+              backdropFilter: 'blur(8px)',
+              transition: 'all 0.2s',
+              userSelect: 'none'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+              e.currentTarget.style.borderColor = '#ef4444';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            <RotateCcw size={12} />
+            Clear Results
+          </button>
+        )}
+
         {/* Glowing Network Status Badge */}
         <div 
           className="status-badge" 
@@ -260,12 +324,13 @@ REDDIT_USER_AGENT=RedditGapFinder/1.0`}
           </div>
         )}
 
-        <Sun size={18} color="var(--text-muted)" style={{ cursor: 'pointer' }} />
-        <Bell size={18} color="var(--text-muted)" style={{ cursor: 'pointer' }} />
+        <Sun size={18} color="var(--text-muted)" className="navbar-icon" style={{ cursor: 'pointer' }} />
+        <Bell size={18} color="var(--text-muted)" className="navbar-icon" style={{ cursor: 'pointer' }} />
 
         {/* User section — real user data or Sign In button */}
         {user ? (
           <div 
+            className="navbar-user-section"
             style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', position: 'relative' }}
             onClick={() => setShowUserMenu(!showUserMenu)}
           >
@@ -274,7 +339,7 @@ REDDIT_USER_AGENT=RedditGapFinder/1.0`}
               alt={user.displayName || 'User'} 
               style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--border-color)' }} 
             />
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="navbar-user-info" style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{user.displayName || 'User'}</span>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Pro Access</span>
             </div>

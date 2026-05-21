@@ -18,6 +18,7 @@ import Competitors from './pages/Competitors';
 import SubredditTracker from './pages/SubredditTracker';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { TopicProvider } from './context/TopicContext';
 import { Lock, Sparkles, AlertTriangle } from 'lucide-react';
 
 // Protected Route wrapper — shows blurred preview + login prompt for unauthenticated users
@@ -156,6 +157,7 @@ function AppContent() {
   const [rightWidth, setRightWidth] = useState(300);
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const startResizeLeft = (e) => {
     e.preventDefault();
@@ -199,26 +201,81 @@ function AppContent() {
       <div style={{
         minHeight: '100vh',
         width: '100vw',
-        background: '#090a0f',
+        background: '#0f1115',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         color: '#fff',
-        fontFamily: "'Outfit', sans-serif"
+        fontFamily: "'Outfit', 'Inter', sans-serif",
+        position: 'relative',
+        overflow: 'hidden'
       }}>
-        {/* Sleek Spinner */}
         <div style={{
-          width: '40px',
-          height: '40px',
-          border: '3px solid rgba(255,255,255,0.05)',
-          borderTop: '3px solid #8b5cf6',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
+          position: 'absolute',
+          width: '300px',
+          height: '300px',
+          background: 'radial-gradient(circle, rgba(139, 124, 255, 0.12) 0%, rgba(139, 124, 255, 0) 70%)',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none',
+          zIndex: 1
         }} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 2 }}>
+          <div style={{ marginBottom: '24px', animation: 'pulse 2s infinite ease-in-out' }}>
+            <svg width="56" height="56" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="lensBgReact" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#4c0519" />
+                  <stop offset="100%" stopColor="#1e0008" />
+                </radialGradient>
+                <linearGradient id="glassRingReact" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#fb923c" />
+                  <stop offset="50%" stopColor="#f97316" />
+                  <stop offset="100%" stopColor="#ea580c" />
+                </linearGradient>
+                <linearGradient id="handleGradReact" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#f97316" />
+                  <stop offset="100%" stopColor="#9a3412" />
+                </linearGradient>
+                <filter id="glowReact" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="2.5" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+              </defs>
+              <rect x="12" y="68" width="12" height="28" rx="6" transform="rotate(-45 18 82)" fill="url(#handleGradReact)" />
+              <circle cx="56" cy="44" r="26" fill="url(#lensBgReact)" />
+              <path d="M 38 52 L 48 42 L 56 48 L 68 32" stroke="#ffffff" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <circle cx="38" cy="52" r="4" fill="#ffffff" />
+              <circle cx="48" cy="42" r="4" fill="#ffffff" />
+              <circle cx="56" cy="48" r="4" fill="#ffffff" />
+              <circle cx="68" cy="32" r="4" fill="#ffffff" />
+              <circle cx="56" cy="44" r="26" stroke="url(#glassRingReact)" strokeWidth="5" fill="none" filter="url(#glowReact)" />
+            </svg>
+          </div>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            border: '3px solid rgba(255,255,255,0.03)',
+            borderTop: '3px solid #8b7cff',
+            borderRadius: '50%',
+            animation: 'spin 1s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite',
+            marginBottom: '16px'
+          }} />
+          <div style={{ fontSize: '0.95rem', fontWeight: 500, letterSpacing: '-0.2px', color: '#98a2b3' }}>
+            Loading Reddit<span style={{ color: '#f97316', fontWeight: 800 }}>GapFinder</span>...
+          </div>
+        </div>
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+          }
+          @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.95; }
+            50% { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 12px rgba(249,115,22,0.35)); }
+            100% { transform: scale(1); opacity: 0.95; }
           }
         `}</style>
       </div>
@@ -238,7 +295,23 @@ function AppContent() {
         overflow: 'hidden'
       }}
     >
-      <LeftSidebar />
+      {/* Mobile backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          onClick={() => setMobileMenuOpen(false)}
+          className="mobile-backdrop"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(9, 10, 13, 0.7)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            zIndex: 9999
+          }}
+        />
+      )}
+
+      <LeftSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       
       <div 
         className={`layout-divider left-divider ${isResizingLeft ? 'active' : ''}`}
@@ -246,7 +319,7 @@ function AppContent() {
       />
       
       <div className="center-content">
-        <TopNavbar />
+        <TopNavbar onToggleMenu={() => setMobileMenuOpen(true)} />
         
         {isMockUser && (
           <div style={{
@@ -384,9 +457,11 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <TopicProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </TopicProvider>
     </AuthProvider>
   );
 }

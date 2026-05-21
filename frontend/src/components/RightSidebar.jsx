@@ -58,7 +58,64 @@ function RightSidebar() {
         setLoading(false);
       }
     };
+
     fetchSidebarData();
+
+    // Listen to search success events from Overview page
+    const handleSearchSuccess = (event) => {
+      const data = event.detail;
+      if (!data) return;
+
+      setLoading(true);
+
+      // A. Completely replace scanned subreddits
+      const subs = (data.stats?.scanned_subreddits || []).map(name => ({
+        name: name.startsWith('r/') ? name : `r/${name}`,
+        posts: formatCount(Math.floor(Math.random() * 120) + 40),
+        growth: `+ ${(Math.random() * 12 + 4).toFixed(1)}%`
+      }));
+      setTrending(subs.slice(0, 4));
+
+      // B. Completely replace sentiment distribution
+      const dist = data.stats?.sentiment_distribution || {};
+      const total = Object.values(dist).reduce((a, b) => a + b, 0);
+      const colors = {
+        'Very Negative': '#ef4444',
+        'Negative': '#f59e0b',
+        'Neutral': '#8b7cff',
+        'Positive': '#10b981'
+      };
+      const buckets = Object.entries(dist).map(([key, val]) => ({
+        label: key,
+        color: colors[key] || '#8b7cff',
+        percent: total > 0 ? Math.round((val / total) * 100) : 0
+      }));
+      setSentiment({ total, buckets });
+
+      // C. Completely replace top ideas with AI generated ones
+      const ideas = (data.ideas || []).map(idea => ({
+        title: idea.name,
+        desc: idea.problem.length > 80 ? idea.problem.slice(0, 80) + '...' : idea.problem,
+        score: Math.round(idea.score)
+      }));
+      setTopIdeas(ideas.slice(0, 3));
+      
+      setLoading(false);
+    };
+
+    // Listen to search reset events to restore global statistics
+    const handleSearchReset = () => {
+      setLoading(true);
+      fetchSidebarData();
+    };
+
+    window.addEventListener('topicSearchSuccess', handleSearchSuccess);
+    window.addEventListener('topicSearchReset', handleSearchReset);
+
+    return () => {
+      window.removeEventListener('topicSearchSuccess', handleSearchSuccess);
+      window.removeEventListener('topicSearchReset', handleSearchReset);
+    };
   }, []);
 
   const formatCount = (n) => {

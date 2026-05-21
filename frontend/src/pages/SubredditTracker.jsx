@@ -75,9 +75,9 @@ function SubredditTracker() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem', alignItems: 'start' }}>
+      <div className="subreddit-tracker-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem', alignItems: 'start' }}>
         {/* Main List */}
-        <div className="panel" style={{ padding: '0' }}>
+        <div className="panel" style={{ padding: '0', overflowX: 'auto' }}>
           <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontSize: '0.9rem', fontWeight: 600 }}>Active Subreddit Webhooks</h3>
             <span style={{ fontSize: '0.75rem', color: 'var(--success-color)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
@@ -93,7 +93,7 @@ function SubredditTracker() {
               No subreddits currently tracked. Register one on the right to start!
             </div>
           ) : (
-            <div>
+            <div style={{ minWidth: '600px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 100px', padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                 <div>SUBREDDIT CHANNEL</div>
                 <div style={{ textAlign: 'right' }}>MONTHLY MENTIONS</div>

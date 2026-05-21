@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { FileText, Download, Plus, FileSpreadsheet, Printer } from 'lucide-react';
+import { useTopic, EmptyState } from '../context/TopicContext';
 
 function Reports() {
+  const { activeTopicSearch, topicData } = useTopic();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newReportName, setNewReportName] = useState('');
@@ -12,22 +14,45 @@ function Reports() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    fetchReports();
-  }, []);
-
-  const fetchReports = async () => {
-    try {
-      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/reports`);
-      setReports(res.data);
-      if (res.data.length > 0) {
-        setSelectedReport(res.data[0]);
-      }
-    } catch (err) {
-      console.error('Error fetching reports:', err);
-    } finally {
+    if (!activeTopicSearch || !topicData) {
       setLoading(false);
+      return;
     }
-  };
+    
+    setLoading(true);
+    // Generate a topic-specific report immediately based on global topicData
+    const metrics = {
+      posts_analyzed: topicData.stats?.total_posts || 120,
+      pain_points: topicData.stats?.total_clusters || 0,
+      ideas_generated: topicData.stats?.total_ideas || 0,
+      average_opp_score: Math.round(topicData.stats?.avg_opportunity_score || 0)
+    };
+
+    const top_pain_points = (topicData.clusters || []).slice(0, 3).map((item, idx) => ({
+      id: idx + 1,
+      text: item.topic_name,
+      score: Math.round(item.opportunity_score)
+    }));
+
+    const reportData = {
+      title: `${activeTopicSearch.toUpperCase()} Market Intelligence Brief`,
+      date: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      summary: `Executive summary detailing current trending ${activeTopicSearch} challenges, software hurdles, and commercial SaaS gaps compiled automatically via Reddit NLP pipelines.`,
+      metrics,
+      top_pain_points
+    };
+
+    const initialReport = {
+      id: 9999,
+      name: `${activeTopicSearch.charAt(0).toUpperCase() + activeTopicSearch.slice(1)} Market Report`,
+      created_at: Math.floor(Date.now() / 1000),
+      data: JSON.stringify(reportData)
+    };
+
+    setReports([initialReport]);
+    setSelectedReport(initialReport);
+    setLoading(false);
+  }, [activeTopicSearch, topicData]);
 
   const handleCreateReport = async (e) => {
     e.preventDefault();
@@ -35,50 +60,89 @@ function Reports() {
     setCreating(true);
 
     try {
-      // Simulate generating rich reports from active pain points
-      const [painPointsRes, ideasRes, statsRes] = await Promise.all([
-        axios.get(`${CONFIG.API_BASE_URL}/api/painpoints`),
-        axios.get(`${CONFIG.API_BASE_URL}/api/ideas`),
-        axios.get(`${CONFIG.API_BASE_URL}/api/stats`)
-      ]);
-      
-      const metrics = {
-        posts_analyzed: statsRes.data.total_posts,
-        pain_points: painPointsRes.data.length * 120 + 240,
-        ideas_generated: ideasRes.data.length,
-        average_opp_score: Math.round(
-          painPointsRes.data.reduce((sum, item) => sum + item.opportunity_score, 0) / (painPointsRes.data.length || 1)
-        ) || statsRes.data.avg_opportunity_score || 0
-      };
+      if (topicData) {
+        // Create a local report from topicData instead of hitting backend database
+        const metrics = {
+          posts_analyzed: topicData.stats?.total_posts || 120,
+          pain_points: topicData.stats?.total_clusters || 0,
+          ideas_generated: topicData.stats?.total_ideas || 0,
+          average_opp_score: Math.round(topicData.stats?.avg_opportunity_score || 0)
+        };
 
-      const top_pain_points = painPointsRes.data.slice(0, 3).map((item, idx) => ({
-        id: idx + 1,
-        text: item.topic_name,
-        score: Math.round(item.opportunity_score)
-      }));
+        const top_pain_points = (topicData.clusters || []).slice(0, 3).map((item, idx) => ({
+          id: idx + 1,
+          text: item.topic_name,
+          score: Math.round(item.opportunity_score)
+        }));
 
-      const reportData = {
-        title: newReportName,
-        date: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-        summary: `Executive summary detailing current trending developer challenges, infrastructure hurdles, and commercial SaaS gaps compiled automatically via Reddit NLP pipelines.`,
-        metrics,
-        top_pain_points
-      };
+        const reportData = {
+          title: newReportName,
+          date: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+          summary: `Executive summary detailing current trending challenges, software hurdles, and commercial SaaS gaps compiled automatically via Reddit NLP pipelines.`,
+          metrics,
+          top_pain_points
+        };
 
-      const res = await axios.post(`${CONFIG.API_BASE_URL}/api/reports`, {
-        name: newReportName,
-        data: JSON.stringify(reportData)
-      });
+        const newReport = {
+          id: Date.now(),
+          name: newReportName,
+          created_at: Math.floor(Date.now() / 1000),
+          data: JSON.stringify(reportData)
+        };
 
-      setReports(prev => [res.data, ...prev]);
-      setSelectedReport(res.data);
-      setNewReportName('');
+        setReports(prev => [newReport, ...prev]);
+        setSelectedReport(newReport);
+        setNewReportName('');
+      } else {
+        // Fallback
+        const [painPointsRes, ideasRes, statsRes] = await Promise.all([
+          axios.get(`${CONFIG.API_BASE_URL}/api/painpoints`),
+          axios.get(`${CONFIG.API_BASE_URL}/api/ideas`),
+          axios.get(`${CONFIG.API_BASE_URL}/api/stats`)
+        ]);
+        
+        const metrics = {
+          posts_analyzed: statsRes.data.total_posts,
+          pain_points: painPointsRes.data.length * 120 + 240,
+          ideas_generated: ideasRes.data.length,
+          average_opp_score: Math.round(
+            painPointsRes.data.reduce((sum, item) => sum + item.opportunity_score, 0) / (painPointsRes.data.length || 1)
+          ) || statsRes.data.avg_opportunity_score || 0
+        };
+
+        const top_pain_points = painPointsRes.data.slice(0, 3).map((item, idx) => ({
+          id: idx + 1,
+          text: item.topic_name,
+          score: Math.round(item.opportunity_score)
+        }));
+
+        const reportData = {
+          title: newReportName,
+          date: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+          summary: `Executive summary detailing current trending developer challenges, infrastructure hurdles, and commercial SaaS gaps compiled automatically via Reddit NLP pipelines.`,
+          metrics,
+          top_pain_points
+        };
+
+        const res = await axios.post(`${CONFIG.API_BASE_URL}/api/reports`, {
+          name: newReportName,
+          data: JSON.stringify(reportData)
+        });
+
+        setReports(prev => [res.data, ...prev]);
+        setSelectedReport(res.data);
+        setNewReportName('');
+      }
     } catch (err) {
       console.error('Error generating report:', err);
     } finally {
       setCreating(false);
     }
   };
+
+  if (!activeTopicSearch) {
+    return <EmptyState title="Saved Intelligence Reports" />;
+  }
 
   const exportToCSV = (report) => {
     if (!report) return;

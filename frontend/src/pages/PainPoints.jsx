@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { Bookmark, X, Search, Sparkles, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useTopic, EmptyState } from '../context/TopicContext';
 
 function PainPoints() {
+  const { activeTopicSearch, topicData } = useTopic();
   const [painPoints, setPainPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,19 +18,22 @@ function PainPoints() {
   const [toast, setToast] = useState({ show: false, message: '' });
 
   useEffect(() => {
-    fetchPainPoints();
-  }, [sortBy]);
-
-  const fetchPainPoints = async () => {
-    try {
-      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/painpoints?sort_by=${sortBy}`);
-      setPainPoints(res.data);
-    } catch (err) {
-      console.error('Error fetching pain points:', err);
-    } finally {
+    if (!activeTopicSearch || !topicData) {
       setLoading(false);
+      return;
     }
-  };
+
+    setLoading(true);
+    // Perform local client-side sorting on the global clusters context
+    const sorted = [...(topicData.clusters || [])];
+    if (sortBy === 'score') {
+      sorted.sort((a, b) => (b.opportunity_score || 0) - (a.opportunity_score || 0));
+    } else if (sortBy === 'size') {
+      sorted.sort((a, b) => (b.size || 0) - (a.size || 0));
+    }
+    setPainPoints(sorted);
+    setLoading(false);
+  }, [sortBy, topicData, activeTopicSearch]);
 
   const handleOpenDetails = async (point) => {
     setSelectedPoint(point);
@@ -37,14 +42,23 @@ function PainPoints() {
     setGeneratedIdeas([]);
 
     try {
-      // 1. Fetch related reddit posts using keyword matching
-      const postsRes = await axios.get(`${CONFIG.API_BASE_URL}/api/posts?search=${point.keywords.split(',')[0]}`);
-      setRelatedPosts(postsRes.data.slice(0, 3));
+      if (topicData) {
+        // Use global topicData discoveries directly (no backend database hits)
+        const matchedPosts = (topicData.discoveries || []).slice(0, 3);
+        setRelatedPosts(matchedPosts);
 
-      // 2. Fetch ideas and filter those matching this cluster
-      const ideasRes = await axios.get(`${CONFIG.API_BASE_URL}/api/ideas`);
-      const matched = ideasRes.data.filter(idea => idea.cluster_id === point.id);
-      setGeneratedIdeas(matched);
+        // Filter ideas that match this cluster id from topicData.ideas
+        const matched = (topicData.ideas || []).filter(idea => idea.cluster_id === point.id);
+        setGeneratedIdeas(matched);
+      } else {
+        // Fallback to fetch from database if somehow topicData is missing
+        const postsRes = await axios.get(`${CONFIG.API_BASE_URL}/api/posts?search=${point.keywords.split(',')[0]}`);
+        setRelatedPosts(postsRes.data.slice(0, 3));
+
+        const ideasRes = await axios.get(`${CONFIG.API_BASE_URL}/api/ideas`);
+        const matched = ideasRes.data.filter(idea => idea.cluster_id === point.id);
+        setGeneratedIdeas(matched);
+      }
     } catch (err) {
       console.error('Error fetching cluster details:', err);
     } finally {
@@ -71,6 +85,10 @@ function PainPoints() {
     p.topic_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.keywords.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (!activeTopicSearch) {
+    return <EmptyState title="Pain Point Clusters" />;
+  }
 
   return (
     <motion.div 

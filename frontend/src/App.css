@@ -139,7 +139,7 @@
   border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0.5rem 1rem;
-  color: var(--text-main);
+  color: #ffffff !important;
   width: 300px;
   font-size: 0.85rem;
   outline: none;
@@ -149,3 +149,141 @@
 .search-bar:focus {
   border-color: var(--primary-color);
 }
+
+/* ==========================================================================
+   GLOBAL SEARCH & INPUTS TEXT COLOR VISIBILITY FIX
+   ========================================================================== */
+input, select, textarea {
+  color: #ffffff !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4) !important;
+}
+
+/* Ensure autofill doesn't break visibility in dark mode */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  border: 1px solid var(--border-color) !important;
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0px 1000px #171b22 inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* Select options styling in dark mode */
+select option {
+  background-color: #171b22 !important;
+  color: #ffffff !important;
+}
+
+/* ==========================================================================
+   RESPONSIVE LAYOUTS & MOBILE DRAWER
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Override the JSX inline styles for grid columns */
+  .app-container {
+    display: block !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    width: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .center-content {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+  }
+
+  .main-view {
+    padding: 1.25rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Hide resizing separators and right sidebar on mobile */
+  .layout-divider, 
+  .right-sidebar {
+    display: none !important;
+  }
+
+  /* Drawer implementation for sidebar */
+  .left-sidebar {
+    position: fixed !important;
+    top: 0;
+    left: -280px;
+    width: 280px !important;
+    height: 100vh !important;
+    z-index: 10000 !important;
+    background: #0f1115 !important;
+    border-right: 1px solid var(--border-color) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 20px 0 40px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .left-sidebar.mobile-open {
+    transform: translateX(280px) !important;
+  }
+
+  /* Toggle buttons */
+  .mobile-menu-close {
+    display: flex !important;
+  }
+
+  .mobile-menu-toggle {
+    display: flex !important;
+  }
+
+  /* Sticky Top Navbar adjustments */
+  .top-navbar {
+    padding: 0 1rem !important;
+  }
+
+  .navbar-search-wrapper, 
+  .navbar-icon, 
+  .status-badge {
+    display: none !important;
+  }
+
+  /* Grids collapsing dynamically */
+  .overview-hero-grid, 
+  .overview-discoveries-grid, 
+  .startup-ideas-grid, 
+  .startup-ideas-item-grid, 
+  .subreddit-tracker-grid, 
+  .trends-layout-grid, 
+  .reports-layout-grid, 
+  .search-explorer-main-grid, 
+  .pain-points-modal-grid, 
+  .startup-ideas-modal-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  .overview-stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .navbar-user-info {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .overview-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+

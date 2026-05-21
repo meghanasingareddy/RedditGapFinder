@@ -4,8 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { Search, Sparkles, Activity, CheckCircle2, Bookmark, Terminal, ShieldAlert } from 'lucide-react';
+import { useTopic, EmptyState } from '../context/TopicContext';
 
 function SearchExplorer() {
+  const { activeTopicSearch } = useTopic();
   const [searchParams] = useSearchParams();
   const qParam = searchParams.get('q') || '';
   
@@ -100,6 +102,10 @@ function SearchExplorer() {
       console.error('Error saving bookmark:', err);
     }
   };
+
+  if (!activeTopicSearch) {
+    return <EmptyState title="SaaS Gap Explorer" />;
+  }
 
   return (
     <motion.div 

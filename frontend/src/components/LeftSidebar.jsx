@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, AlertCircle, Lightbulb, TrendingUp, Search, FileText, Bookmark, Eye, Activity, LogOut, Lock, LogIn } from 'lucide-react';
+import { Home, AlertCircle, Lightbulb, TrendingUp, Search, FileText, Bookmark, Eye, Activity, LogOut, Lock, LogIn, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import Logo from './Logo';
 
-function LeftSidebar() {
+function LeftSidebar({ isOpen, onClose }) {
   const { user, logout, loginWithGoogle } = useAuth();
   const [liveSubs, setLiveSubs] = useState([]);
 
@@ -41,7 +41,11 @@ function LeftSidebar() {
     const showLock = isProtected && !user;
 
     return (
-      <NavLink to={to} className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+      <NavLink 
+        to={to} 
+        onClick={onClose}
+        className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+      >
         {icon}
         <span style={{ flex: 1 }}>{label}</span>
         {showLock && (
@@ -52,9 +56,25 @@ function LeftSidebar() {
   };
 
   return (
-    <div className="left-sidebar">
-      <div style={{ marginBottom: '2rem', paddingLeft: '0.25rem' }}>
+    <div className={`left-sidebar ${isOpen ? 'mobile-open' : ''}`}>
+      <div style={{ marginBottom: '2rem', paddingLeft: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Logo size={28} />
+        <button 
+          onClick={onClose}
+          className="mobile-menu-close"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <X size={20} />
+        </button>
       </div>
 
       <div className="sidebar-section">

@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { Bookmark, X, Search, Sparkles, Share2, Download, CheckCircle2, ArrowRight } from 'lucide-react';
+import { useTopic, EmptyState } from '../context/TopicContext';
 
 function StartupIdeas() {
+  const { activeTopicSearch, topicData } = useTopic();
   const [ideas, setIdeas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,19 +16,13 @@ function StartupIdeas() {
   const [toast, setToast] = useState({ show: false, message: '' });
 
   useEffect(() => {
-    fetchIdeas();
-  }, []);
-
-  const fetchIdeas = async () => {
-    try {
-      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/ideas`);
-      setIdeas(res.data);
-    } catch (err) {
-      console.error('Error fetching startup ideas:', err);
-    } finally {
+    if (!activeTopicSearch || !topicData) {
       setLoading(false);
+      return;
     }
-  };
+    setIdeas(topicData.ideas || []);
+    setLoading(false);
+  }, [activeTopicSearch, topicData]);
 
   const handleOpenDetails = async (idea) => {
     setSelectedIdea(idea);
@@ -34,10 +30,20 @@ function StartupIdeas() {
     setRelatedPosts([]);
 
     try {
-      // Fetch related conversations based on idea name
-      const searchTerms = idea.name.split(' ')[0];
-      const res = await axios.get(`${CONFIG.API_BASE_URL}/api/posts?search=${searchTerms}`);
-      setRelatedPosts(res.data.slice(0, 3));
+      if (topicData) {
+        // Retrieve matching discoveries locally without hitting backend
+        const searchTerms = idea.name.split(' ')[0].toLowerCase();
+        const matched = (topicData.discoveries || []).filter(post => 
+          (post.title || '').toLowerCase().includes(searchTerms) ||
+          (post.selftext || '').toLowerCase().includes(searchTerms)
+        );
+        setRelatedPosts(matched.length > 0 ? matched.slice(0, 3) : (topicData.discoveries || []).slice(0, 3));
+      } else {
+        // Fallback to fetch from database if somehow topicData is missing
+        const searchTerms = idea.name.split(' ')[0];
+        const res = await axios.get(`${CONFIG.API_BASE_URL}/api/posts?search=${searchTerms}`);
+        setRelatedPosts(res.data.slice(0, 3));
+      }
     } catch (err) {
       console.error('Error fetching idea contexts:', err);
     } finally {
@@ -110,6 +116,10 @@ function StartupIdeas() {
     i.problem.toLowerCase().includes(searchQuery.toLowerCase()) ||
     i.audience.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (!activeTopicSearch) {
+    return <EmptyState title="Startup Viability Ideas" />;
+  }
 
   return (
     <motion.div 
@@ -189,7 +199,7 @@ function StartupIdeas() {
                   <span style={{ color: 'var(--text-muted)' }}>Structuring business brief...</span>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+                <div className="startup-ideas-modal-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
                   {/* Left Column: Business specifications */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     <div>
@@ -290,7 +300,7 @@ function StartupIdeas() {
               transition={{ delay: idx * 0.1 }}
               whileHover={{ scale: 1.01, borderColor: 'var(--primary-color)' }}
               onClick={() => handleOpenDetails(idea)}
-              className="panel"
+              className="panel startup-ideas-item-grid"
               style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem', cursor: 'pointer', background: 'linear-gradient(145deg, rgba(23, 27, 34, 0.9), rgba(15, 17, 21, 0.9))' }}
             >
               <div style={{ borderRight: '1px solid rgba(255,255,255,0.06)', paddingRight: '2rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>

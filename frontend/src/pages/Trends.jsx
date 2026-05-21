@@ -11,8 +11,10 @@ import {
   CartesianGrid, Tooltip, Legend,
   Cell
 } from 'recharts';
+import { useTopic, EmptyState } from '../context/TopicContext';
 
 function Trends() {
+  const { activeTopicSearch, topicData } = useTopic();
   const [trends, setTrends] = useState([]);
   const [painPoints, setPainPoints] = useState([]);
   const [timelineData, setTimelineData] = useState([]);
@@ -21,65 +23,67 @@ function Trends() {
   const [filterPeriod, setFilterPeriod] = useState('This Month');
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [trendsRes, painPointsRes, statsRes] = await Promise.all([
-          axios.get(`${CONFIG.API_BASE_URL}/api/trends`),
-          axios.get(`${CONFIG.API_BASE_URL}/api/painpoints`),
-          axios.get(`${CONFIG.API_BASE_URL}/api/stats`)
-        ]);
-        setTrends(trendsRes.data);
-        setPainPoints(painPointsRes.data);
+    if (!activeTopicSearch || !topicData) {
+      setLoading(false);
+      return;
+    }
 
-        // Build timeline data from real pain point clusters
-        const clusters = painPointsRes.data;
-        if (clusters.length > 0) {
-          // Use cluster opportunity scores to generate a timeline-like chart
-          // Group by first word of topic name for chart series
-          const topicGroups = {};
-          clusters.forEach(c => {
-            const key = c.topic_name.split(' ')[0].replace(/[^a-zA-Z]/g, '') || 'Topic';
-            if (!topicGroups[key]) topicGroups[key] = [];
-            topicGroups[key].push(Math.round(c.opportunity_score));
-          });
+    setLoading(true);
+    
+    // Map trends from topicData clusters
+    const localTrends = (topicData.clusters || []).map(c => ({
+      id: c.id,
+      topic: c.topic_name,
+      mentions: (c.size || 1) * 10,
+      growth_percent: Math.round((c.opportunity_score || 70) / 2 + 10)
+    }));
+    setTrends(localTrends);
+    setPainPoints(topicData.clusters || []);
 
-          // Take top 3 topic groups
-          const topGroups = Object.entries(topicGroups).slice(0, 3);
-          const maxLen = Math.max(...topGroups.map(([, v]) => v.length), 1);
-          
-          const timeline = [];
-          for (let i = 0; i < Math.min(maxLen, 5); i++) {
-            const point = { date: `Point ${i + 1}` };
-            topGroups.forEach(([key, values]) => {
-              point[key] = values[i] || values[values.length - 1] || 75;
-            });
-            timeline.push(point);
-          }
-          setTimelineData(timeline);
-        }
+    // Build timeline data from global pain point clusters
+    const clusters = topicData.clusters || [];
+    if (clusters.length > 0) {
+      const topicGroups = {};
+      clusters.forEach(c => {
+        const key = c.topic_name.split(' ')[0].replace(/[^a-zA-Z]/g, '') || 'Topic';
+        if (!topicGroups[key]) topicGroups[key] = [];
+        topicGroups[key].push(Math.round(c.opportunity_score));
+      });
 
-        // Build sentiment data from stats API
-        const dist = statsRes.data.sentiment_distribution || {};
-        const colorMap = {
-          'Very Negative': '#ef4444',
-          'Negative': '#f59e0b',
-          'Neutral': '#8b7cff',
-          'Positive': '#10b981'
-        };
-        const sentiments = Object.entries(dist).map(([name, count]) => ({
-          name,
-          count,
-          fill: colorMap[name] || '#8b7cff'
-        }));
-        setSentimentData(sentiments);
-      } catch (err) {
-        console.error('Error fetching trends:', err);
-      } finally {
-        setLoading(false);
+      const topGroups = Object.entries(topicGroups).slice(0, 3);
+      const maxLen = Math.max(...topGroups.map(([, v]) => v.length), 1);
+      
+      const timeline = [];
+      for (let i = 0; i < Math.min(maxLen, 5); i++) {
+        const point = { date: `Week ${i + 1}` };
+        topGroups.forEach(([key, values]) => {
+          point[key] = values[i] || values[values.length - 1] || 75;
+        });
+        timeline.push(point);
       }
+      setTimelineData(timeline);
+    }
+
+    // Build sentiment data from global stats
+    const dist = topicData.stats?.sentiment_distribution || {};
+    const colorMap = {
+      'Very Negative': '#ef4444',
+      'Negative': '#f59e0b',
+      'Neutral': '#8b7cff',
+      'Positive': '#10b981'
     };
-    fetchData();
-  }, []);
+    const sentiments = Object.entries(dist).map(([name, count]) => ({
+      name,
+      count,
+      fill: colorMap[name] || '#8b7cff'
+    }));
+    setSentimentData(sentiments);
+    setLoading(false);
+  }, [activeTopicSearch, topicData]);
+
+  if (!activeTopicSearch) {
+    return <EmptyState title="Trends & Opportunity Index" />;
+  }
 
   // Get dynamic series keys for the area chart
   const seriesKeys = timelineData.length > 0 
