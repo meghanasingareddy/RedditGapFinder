@@ -152,40 +152,6 @@ function ProtectedRoute({ children }) {
 function AppContent() {
   const { user, loading } = useAuth();
   const [showSetupInstructions, setShowSetupInstructions] = useState(false);
-
-  if (loading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        width: '100vw',
-        background: '#090a0f',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#fff',
-        fontFamily: "'Outfit', sans-serif"
-      }}>
-        {/* Sleek Spinner */}
-        <div style={{
-          width: '40px',
-          height: '40px',
-          border: '3px solid rgba(255,255,255,0.05)',
-          borderTop: '3px solid #8b5cf6',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite'
-        }} />
-        <style>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  const isMockUser = user && user.uid === "mock-dev-user-id";
-
   const [leftWidth, setLeftWidth] = useState(240);
   const [rightWidth, setRightWidth] = useState(300);
   const [isResizingLeft, setIsResizingLeft] = useState(false);
@@ -227,6 +193,39 @@ function AppContent() {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isResizingLeft, isResizingRight]);
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        width: '100vw',
+        background: '#090a0f',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#fff',
+        fontFamily: "'Outfit', sans-serif"
+      }}>
+        {/* Sleek Spinner */}
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid rgba(255,255,255,0.05)',
+          borderTop: '3px solid #8b5cf6',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  const isMockUser = user && user.uid === "mock-dev-user-id";
 
   // Dashboard is always visible — no auth wall
   return (
