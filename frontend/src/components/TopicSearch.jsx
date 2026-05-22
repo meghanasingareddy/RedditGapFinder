@@ -42,6 +42,18 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
   const [query, setQuery] = useState('');
   const [selectedDepth, setSelectedDepth] = useState(welcomeDepth || 'standard');
 
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 768;
+
   // Sync depth from parent when in welcomeMode
   useEffect(() => {
     if (welcomeMode) setSelectedDepth(welcomeDepth);
@@ -431,9 +443,9 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
         style={{
           position: 'fixed',
           top: `${dropdownRect.bottom + 8}px`,
-          right: `${window.innerWidth - dropdownRect.right}px`,
-          left: 'auto',
-          width: '680px',
+          left: isMobile ? '16px' : 'auto',
+          right: isMobile ? '16px' : `${window.innerWidth - dropdownRect.right}px`,
+          width: isMobile ? 'calc(100vw - 32px)' : '680px',
           zIndex: 99999
         }}
       >

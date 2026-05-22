@@ -351,6 +351,12 @@ function Overview() {
         }
         .welcome-depth-card:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.12); }
         .welcome-depth-card.selected { border-color: var(--sel-color); background: rgba(255,255,255,0.025); }
+        @media (max-width: 768px) {
+          .welcome-depth-card {
+            padding: 1rem 1.25rem !important;
+            min-height: 54px !important;
+          }
+        }
         .welcome-search-input {
           flex: 1; background: transparent; border: none; outline: none;
           color: #ffffff; font-size: 1rem; height: 100%;
@@ -507,7 +513,36 @@ function Overview() {
           onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(139,124,255,0.5)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.3), 0 0 0 2px rgba(139,124,255,0.15)'; }}
           onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.3)'; }}
         >
-          <Search size={20} color="rgba(255,255,255,0.35)" />
+          <button
+            onClick={async () => {
+              try {
+                // Show standard scan progress indicator/modal
+                handleTopicSearchStart("fashion");
+                
+                const response = await axios.post(`${CONFIG.API_BASE_URL}/api/search/topic`, {
+                  topic: "fashion",
+                  depth: "standard_analysis"
+                });
+                
+                handleTopicSearchSuccess(response.data);
+              } catch (error) {
+                const errMsg = error.response?.data?.detail || error.message || 'Topic analysis failed';
+                handleTopicSearchError(errMsg);
+              }
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0
+            }}
+            title="Scan Fashion"
+          >
+            <Search size={20} color="rgba(255,255,255,0.35)" />
+          </button>
           <TopicSearch
             onSearchStart={handleTopicSearchStart}
             onSearchSuccess={handleTopicSearchSuccess}

@@ -7,7 +7,7 @@ import { CONFIG } from '../config';
 import Logo from './Logo';
 import { useTopic, getRelativeTime } from '../context/TopicContext';
 
-function LeftSidebar({ isOpen, onClose }) {
+function LeftSidebar({ isOpen, onClose, isMobile }) {
   const { user, logout, loginWithGoogle } = useAuth();
   const [liveSubs, setLiveSubs] = useState([]);
 
@@ -118,22 +118,24 @@ function LeftSidebar({ isOpen, onClose }) {
     <div className={`left-sidebar ${isOpen ? 'mobile-open' : ''}`}>
       <div style={{ marginBottom: '2rem', paddingLeft: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Logo size={28} />
-        <button 
-          onClick={onClose}
-          className="mobile-menu-close"
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-muted)',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'none',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <X size={20} />
-        </button>
+        {isMobile && (
+          <button 
+            onClick={onClose}
+            className="mobile-menu-close"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       <div className="sidebar-section">

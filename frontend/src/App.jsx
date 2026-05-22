@@ -158,6 +158,19 @@ function AppContent() {
   const [isResizingLeft, setIsResizingLeft] = useState(false);
   const [isResizingRight, setIsResizingRight] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 768;
+  const isTablet = windowWidth >= 768 && windowWidth <= 1200;
+  const isDesktop = windowWidth > 1200;
 
   const startResizeLeft = (e) => {
     e.preventDefault();
@@ -287,14 +300,14 @@ function AppContent() {
   // Dashboard is always visible — no auth wall
   return (
     <div 
-      className={`app-container ${isResizingLeft || isResizingRight ? 'is-resizing' : ''}`}
+      className={`app-container ${isMobile ? 'is-mobile' : isTablet ? 'is-tablet' : 'is-desktop'} ${isResizingLeft || isResizingRight ? 'is-resizing' : ''}`}
       style={{
-        '--left-width': `${leftWidth}px`,
-        '--right-width': `${rightWidth}px`
+        '--left-width': isMobile ? '0px' : `${leftWidth}px`,
+        '--right-width': isMobile ? '0px' : isTablet ? '0px' : `${rightWidth}px`
       }}
     >
       {/* Mobile backdrop */}
-      {mobileMenuOpen && (
+      {isMobile && mobileMenuOpen && (
         <div 
           onClick={() => setMobileMenuOpen(false)}
           className="mobile-backdrop"
@@ -309,15 +322,17 @@ function AppContent() {
         />
       )}
 
-      <LeftSidebar isOpen={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
+      <LeftSidebar isOpen={isMobile && mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} isMobile={isMobile} />
       
-      <div 
-        className={`layout-divider left-divider ${isResizingLeft ? 'active' : ''}`}
-        onMouseDown={startResizeLeft}
-      />
+      {!isMobile && (
+        <div 
+          className={`layout-divider left-divider ${isResizingLeft ? 'active' : ''}`}
+          onMouseDown={startResizeLeft}
+        />
+      )}
       
       <div className="center-content">
-        <TopNavbar onToggleMenu={() => setMobileMenuOpen(true)} />
+        <TopNavbar onToggleMenu={() => setMobileMenuOpen(true)} isMobile={isMobile} />
         
         {isMockUser && (
           <div style={{
@@ -440,14 +455,22 @@ function AppContent() {
             </Routes>
           </AnimatePresence>
         </main>
+
+        {(isMobile || isTablet) && (
+          <RightSidebar />
+        )}
       </div>
 
-      <div 
-        className={`layout-divider right-divider ${isResizingRight ? 'active' : ''}`}
-        onMouseDown={startResizeRight}
-      />
+      {isDesktop && (
+        <div 
+          className={`layout-divider right-divider ${isResizingRight ? 'active' : ''}`}
+          onMouseDown={startResizeRight}
+        />
+      )}
 
-      <RightSidebar />
+      {isDesktop && (
+        <RightSidebar />
+      )}
     </div>
   );
 }
