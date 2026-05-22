@@ -40,7 +40,9 @@ function Overview() {
     viewingMode,
     setViewingMode,
     setTopicSearchSuccess,
-    clearTopicSearch
+    clearTopicSearch,
+    pendingTopicTrigger,
+    setPendingTopicTrigger
   } = useTopic();
 
   const [dbHasData, setDbHasData] = useState(false);
@@ -134,8 +136,6 @@ function Overview() {
     }
   };
 
-  const [pendingTopicTrigger, setPendingTopicTrigger] = useState(null);
-
   const handleProgressUpdate = (prog) => {
     setAnalysisProgress(prev => ({ ...prev, ...prog }));
     if (prog.phase === 'start') {
@@ -193,7 +193,7 @@ function Overview() {
   };
 
   const handleTopicSearchStart = (topic) => {
-    if (topic) setPendingTopicTrigger({ topic, ts: Date.now() });
+    console.log('Search started internally for:', topic);
   };
 
   const handleTopicSearchSuccess = (data) => {
@@ -520,7 +520,7 @@ function Overview() {
                 className="welcome-topic-chip-grid"
                 onClick={() => {
                   setWelcomeDepth('standard');
-                  handleTopicSearchStart(item.topic);
+                  setPendingTopicTrigger({ topic: item.topic, ts: Date.now() });
                 }}
                 title={`Scan ${item.topic} (${item.category || 'General'})`}
               >
@@ -905,7 +905,7 @@ function Overview() {
                 animation: 'pulse 1.5s infinite ease-in-out'
               }}></div>
               <div>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.675rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Viewing Opportunity Report</span>
+                <span style={{ color: '#b3a9ff', fontSize: '0.675rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Viewing: {activeTopicSearch} (cached)</span>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'baseline', gap: '8px', margin: '2px 0 0 0', fontFamily: 'Cabinet Grotesk, sans-serif' }}>
                   {activeTopicSearch}
                   <span style={{ fontSize: '0.7rem', fontWeight: 500, color: '#8b7cff', background: 'rgba(139, 124, 255, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>

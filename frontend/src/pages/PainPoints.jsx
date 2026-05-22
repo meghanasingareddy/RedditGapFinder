@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { Bookmark, X, Search, Sparkles, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import { useTopic, EmptyState } from '../context/TopicContext';
+import { useTopic, EmptyState, CachedAnalysisBanner } from '../context/TopicContext';
 
 function PainPoints() {
   const { activeTopicSearch, topicData } = useTopic();
@@ -256,6 +256,7 @@ function PainPoints() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
         <div>
+          <CachedAnalysisBanner />
           <h2 style={{ fontSize: '2.25rem', marginBottom: '0.5rem', color: 'white' }}>AI Pain Point Clusters</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', maxWidth: '600px' }}>
             We've clustered thousands of user complaints to identify the most severe problems people are facing right now.

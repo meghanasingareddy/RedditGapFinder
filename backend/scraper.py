@@ -182,9 +182,8 @@ def _extract_reddit_id(url_or_id: str) -> str | None:
         return match.group(1)
     return None
 
-# ==============================================================
-# REDDIT RSS FEED SCRAPER (Primary data source — no auth needed)
-# ==============================================================
+# In-memory RSS feed cache: {subreddit_name: {"timestamp": float, "posts": list}}
+rss_cache = {}
 
 def fetch_reddit_rss(subreddit_name: str, limit: int = 25, sort: str = "hot") -> list[dict]:
     """
@@ -201,6 +200,16 @@ def fetch_reddit_rss(subreddit_name: str, limit: int = 25, sort: str = "hot") ->
     """
     subreddit_name = subreddit_name.strip()
     
+    # 1. In-memory Cache Lookup (valid for 5 minutes)
+    cache_key = subreddit_name.lower()
+    now = time.time()
+    if cache_key in rss_cache:
+        cached_entry = rss_cache[cache_key]
+        if now - cached_entry["timestamp"] < 300:  # 5 minutes
+            print(f"[RSS CACHE HIT] Returning cached feed for '{subreddit_name}'")
+            # Return up to the requested limit
+            return cached_entry["posts"][:limit]
+            
     # Build the RSS URL
     if subreddit_name.startswith("http://") or subreddit_name.startswith("https://"):
         url = subreddit_name
@@ -218,6 +227,8 @@ def fetch_reddit_rss(subreddit_name: str, limit: int = 25, sort: str = "hot") ->
             posts = parse_rss_or_atom(response.content, limit)
             if posts:
                 print(f"[RSS] OK - Parsed {len(posts)} real posts from feed.")
+                # Save full parsed posts to cache
+                rss_cache[cache_key] = {"timestamp": now, "posts": posts}
                 return posts
             else:
                 print(f"[RSS] Feed returned valid XML but no posts found.")
@@ -229,6 +240,7 @@ def fetch_reddit_rss(subreddit_name: str, limit: int = 25, sort: str = "hot") ->
                 posts = parse_rss_or_atom(response.content, limit)
                 if posts:
                     print(f"[RSS] OK - Retry succeeded, parsed {len(posts)} posts.")
+                    rss_cache[cache_key] = {"timestamp": now, "posts": posts}
                     return posts
         else:
             print(f"[RSS] Feed returned status {response.status_code}")

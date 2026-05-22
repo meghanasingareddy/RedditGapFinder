@@ -6,10 +6,10 @@ import nlp
 
 # Depth configurations matching the UI
 DEPTH_CONFIGS = {
-    "quick": {"subreddits": 6, "posts_per_sub": 5, "label": "Quick Insight", "expected_time": "15s"},
-    "standard": {"subreddits": 12, "posts_per_sub": 10, "label": "Standard Analysis", "expected_time": "45s"},
-    "deep": {"subreddits": 20, "posts_per_sub": 10, "label": "Deep Research", "expected_time": "90s"},
-    "market": {"subreddits": 25, "posts_per_sub": 10, "label": "Market Intelligence", "expected_time": "3m"}
+    "quick": {"subreddits": 4, "posts_per_sub": 3, "label": "Quick Insight", "expected_time": "10s"},
+    "standard": {"subreddits": 8, "posts_per_sub": 8, "label": "Standard Analysis", "expected_time": "30s"},
+    "deep": {"subreddits": 15, "posts_per_sub": 8, "label": "Deep Research", "expected_time": "60s"},
+    "market": {"subreddits": 20, "posts_per_sub": 8, "label": "Market Intelligence", "expected_time": "2m"}
 }
 
 def search_reddit_subreddits(topic: str, limit: int = 25) -> list[str]:
@@ -17,7 +17,9 @@ def search_reddit_subreddits(topic: str, limit: int = 25) -> list[str]:
     Search for subreddits related to a specific topic using Reddit's public API.
     Bypasses authentication.
     """
-    url = f"https://www.reddit.com/api/subreddits/search.json?q={topic}&limit={limit}"
+    import urllib.parse
+    encoded_topic = urllib.parse.quote(topic)
+    url = f"https://www.reddit.com/api/subreddits/search.json?q={encoded_topic}&limit={limit}"
     print(f"[TOPIC SEARCH] Searching subreddits for '{topic}': {url}")
     
     try:
@@ -69,10 +71,9 @@ def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=No
         
     raw_subreddits = search_reddit_subreddits(topic, limit=cfg["subreddits"] + 5)
     
-    # Fallback default subreddits if search failed completely
+    # Enforce validation on no communities found
     if not raw_subreddits:
-        print("[TOPIC SEARCH] No subreddits found or search failed. Using fallback keywords.")
-        raw_subreddits = [topic, f"{topic}dev", f"{topic}talk", f"ask{topic}", f"{topic}trends"]
+        raise ValueError(f"No communities found for '{topic}'. Try a different term.")
         
     subreddits_to_scan = raw_subreddits[:cfg["subreddits"]]
     total_subs = len(subreddits_to_scan)
@@ -80,29 +81,41 @@ def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=No
     corpus_posts = []
     scanned_subs_list = []
     
-    # 2. Fetch posts from RSS feeds (or mock fallback if RSS fails)
-    for idx, sub_name in enumerate(subreddits_to_scan):
+    # 2. Fetch posts from RSS feeds in parallel (or mock fallback if RSS fails)
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    def scrape_single_subreddit(sub_name):
         clean_sub = sub_name.replace("r/", "")
         display_sub = f"r/{clean_sub}"
+        print(f"[TOPIC SEARCH] Scraping feed for '{display_sub}' in parallel thread")
+        try:
+            posts = scraper.scrape_subreddit(clean_sub, limit=cfg["posts_per_sub"])
+            if posts:
+                for p in posts:
+                    p["subreddit"] = display_sub
+                return display_sub, posts
+        except Exception as e:
+            print(f"[TOPIC SEARCH] Error scraping '{display_sub}' in thread: {e}")
+        return display_sub, []
+
+    # Run up to 5 subreddits simultaneously using ThreadPoolExecutor
+    completed_count = 0
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {
+            executor.submit(scrape_single_subreddit, sub): sub 
+            for sub in subreddits_to_scan
+        }
         
-        if progress_callback:
-            progress_callback(f"Scanning {display_sub}...", idx + 1, total_subs)
+        for future in as_completed(futures):
+            completed_count += 1
+            display_sub, posts = future.result()
             
-        print(f"[TOPIC SEARCH] [{idx+1}/{total_subs}] Scraping feed for '{display_sub}'")
-        
-        # Scrape posts (first RSS, then simulated fallback)
-        posts = scraper.scrape_subreddit(clean_sub, limit=cfg["posts_per_sub"])
-        
-        if posts:
-            scanned_subs_list.append(display_sub)
-            for p in posts:
-                # Add subreddit metadata back if missing
-                p["subreddit"] = display_sub
-                corpus_posts.append(p)
+            if progress_callback:
+                progress_callback(f"Scanned {display_sub}...", completed_count, total_subs)
                 
-        # Small dynamic delay to be polite to Reddit's RSS endpoints
-        if not scraper.is_using_mock_fallback() and idx < total_subs - 1:
-            time.sleep(random.uniform(0.1, 0.3))
+            if posts:
+                scanned_subs_list.append(display_sub)
+                corpus_posts.extend(posts)
             
     # Process corpus
     if not corpus_posts:

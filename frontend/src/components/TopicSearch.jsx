@@ -11,28 +11,28 @@ const DEPTHS = [
     id: 'quick',
     name: 'Quick Insight',
     desc: 'Fast overview',
-    time: '~15 seconds',
+    time: '~10 seconds',
     color: '#8b7cff'
   },
   {
     id: 'standard',
     name: 'Standard Analysis',
     desc: 'Recommended',
-    time: '~45 seconds',
+    time: '~30 seconds',
     color: '#10b981'
   },
   {
     id: 'deep',
     name: 'Deep Research',
     desc: 'More signals & trends',
-    time: '~90 seconds',
+    time: '~60 seconds',
     color: '#3b82f6'
   },
   {
     id: 'market',
     name: 'Market Intelligence',
     desc: 'Complete opportunity report',
-    time: '~3 minutes',
+    time: '~2 minutes',
     color: '#f59e0b'
   }
 ];
@@ -229,6 +229,22 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
     // Trigger callback
     if (onSearchStart) onSearchStart(searchTopic);
 
+    // Trigger anonymous search tracking
+    try {
+      let sessionId = sessionStorage.getItem('search_session_id');
+      if (!sessionId) {
+        sessionId = 'session_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        sessionStorage.setItem('search_session_id', sessionId);
+      }
+      axios.post(`${CONFIG.API_BASE_URL}/api/track-search`, {
+        topic: searchTopic,
+        depth: selectedDepth,
+        session_id: sessionId
+      }).catch(() => {}); // Fail silently
+    } catch (e) {
+      console.warn("Failed to track search anonymously:", e);
+    }
+
     // Cancel any previous pending request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -238,18 +254,18 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
     abortControllerRef.current = new AbortController();
 
     // 1. Determine parameters based on depth
-    let subredditsToScan = 12;
-    let expectedDurationSec = 45;
+    let subredditsToScan = 8;
+    let expectedDurationSec = 30;
     
     if (selectedDepth === 'quick') {
-      subredditsToScan = 6;
-      expectedDurationSec = 15;
+      subredditsToScan = 4;
+      expectedDurationSec = 10;
     } else if (selectedDepth === 'deep') {
-      subredditsToScan = 20;
-      expectedDurationSec = 90;
+      subredditsToScan = 15;
+      expectedDurationSec = 60;
     } else if (selectedDepth === 'market') {
-      subredditsToScan = 25;
-      expectedDurationSec = 180;
+      subredditsToScan = 20;
+      expectedDurationSec = 120;
     }
 
     // 2. Open Progress Modal and Reset Progress States
@@ -278,19 +294,21 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
 
     // Fallback if no subreddits found or search fails
     if (suggestedSubs.length === 0) {
+      const cleanSearchTopic = searchTopic.toLowerCase().replace(/[^a-z0-9]/g, '');
       suggestedSubs = [
-        searchTopic.toLowerCase(),
-        `${searchTopic.toLowerCase()}dev`,
-        `${searchTopic.toLowerCase()}talk`,
-        `ask${searchTopic.toLowerCase()}`,
-        `${searchTopic.toLowerCase()}trends`,
-        `${searchTopic.toLowerCase()}business`
+        cleanSearchTopic,
+        `${cleanSearchTopic}dev`,
+        `${cleanSearchTopic}talk`,
+        `ask${cleanSearchTopic}`,
+        `${cleanSearchTopic}trends`,
+        `${cleanSearchTopic}business`
       ];
     }
 
     // Stretch or trim to match target count
     while (suggestedSubs.length < subredditsToScan) {
-      suggestedSubs.push(`${searchTopic.toLowerCase()}_${suggestedSubs.length}`);
+      const cleanSearchTopic = searchTopic.toLowerCase().replace(/[^a-z0-9]/g, '');
+      suggestedSubs.push(`${cleanSearchTopic}_${suggestedSubs.length}`);
     }
     const cleanSubsList = suggestedSubs.slice(0, subredditsToScan);
 
@@ -628,16 +646,20 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
             width: calc(100vw - 32px) !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
-            max-height: 80vh !important;
+            max-height: 75vh !important;
             overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch;
           }
           .dropdown-col-left {
             border-right: none !important;
             border-bottom: 1px solid var(--border-color) !important;
-            max-height: 200px !important;
+            max-height: none !important;
+            overflow: visible !important;
           }
           .dropdown-col-right {
             border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+            max-height: none !important;
+            overflow: visible !important;
           }
         }
         .dropdown-col-left {

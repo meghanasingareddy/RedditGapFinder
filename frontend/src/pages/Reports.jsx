@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { FileText, Download, Plus, FileSpreadsheet, Printer } from 'lucide-react';
-import { useTopic, EmptyState } from '../context/TopicContext';
+import { useTopic, EmptyState, CachedAnalysisBanner } from '../context/TopicContext';
 
 function Reports() {
   const { activeTopicSearch, topicData } = useTopic();
@@ -217,9 +217,10 @@ function Reports() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}
     >
-      {/* Sidebar: reports selection & creation */}
+      <CachedAnalysisBanner />
+      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
+        {/* Sidebar: reports selection & creation */}
       <div>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>Saved Intelligence Reports</h2>
         
@@ -350,6 +351,7 @@ function Reports() {
           </div>
         )}
       </AnimatePresence>
+      </div>
     </motion.div>
   );
 }

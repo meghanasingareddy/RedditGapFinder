@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { Search, Sparkles, Activity, CheckCircle2, Bookmark, Terminal, ShieldAlert } from 'lucide-react';
-import { useTopic, EmptyState } from '../context/TopicContext';
+import { useTopic, EmptyState, CachedAnalysisBanner } from '../context/TopicContext';
 
 function SearchExplorer() {
   const { activeTopicSearch } = useTopic();
@@ -114,6 +114,7 @@ function SearchExplorer() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
     >
+      <CachedAnalysisBanner />
       {/* Toast Alert */}
       <AnimatePresence>
         {toast.show && (

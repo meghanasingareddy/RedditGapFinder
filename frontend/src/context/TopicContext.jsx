@@ -1,41 +1,214 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Sparkles } from 'lucide-react';
+import { Search, Sparkles, Database } from 'lucide-react';
 
 const TopicContext = createContext();
 
+export function getRelativeTime(timestamp) {
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDays = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  return `${diffDays}d ago`;
+}
+
+export function CachedAnalysisBanner() {
+  const { activeTopicSearch, activeTopicDepth } = useTopic();
+  
+  if (!activeTopicSearch) return null;
+  
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: -5 }}
+      animate={{ opacity: 1, y: 0 }}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '8px',
+        background: 'rgba(139, 124, 255, 0.05)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        border: '1px solid rgba(139, 124, 255, 0.2)',
+        borderRadius: '8px',
+        padding: '6px 12px',
+        fontSize: '0.75rem',
+        fontWeight: 500,
+        color: '#b3a9ff',
+        boxShadow: '0 4px 12px rgba(139, 124, 255, 0.03)',
+        marginBottom: '1.25rem',
+        userSelect: 'none',
+        alignSelf: 'flex-start'
+      }}
+    >
+      <Database size={12} color="#8b7cff" />
+      <span>Viewing: <strong style={{ color: '#fff' }}>{activeTopicSearch}</strong></span>
+      <span style={{ fontSize: '0.65rem', background: 'rgba(139, 124, 255, 0.15)', padding: '1px 6px', borderRadius: '4px', color: '#8b7cff', fontWeight: 600 }}>
+        {activeTopicDepth} (cached)
+      </span>
+    </motion.div>
+  );
+}
+
 export function TopicProvider({ children }) {
+  const [history, setHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('topic_history');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to load topic history from localStorage:", e);
+      return [];
+    }
+  });
+
+  const [activeTopicId, setActiveTopicId] = useState(() => {
+    try {
+      const savedActive = localStorage.getItem('active_topic_id');
+      return savedActive || null;
+    } catch (e) {
+      return null;
+    }
+  });
+
   const [activeTopicSearch, setActiveTopicSearch] = useState(null);
   const [activeTopicDepth, setActiveTopicDepth] = useState(null);
   const [topicData, setTopicData] = useState(null);
   const [scannedSubreddits, setScannedSubreddits] = useState([]);
   const [viewingMode, setViewingMode] = useState('empty');
+  const [pendingTopicTrigger, setPendingTopicTrigger] = useState(null);
+
+  // Sync activeTopicId to localStorage
+  useEffect(() => {
+    try {
+      if (activeTopicId) {
+        localStorage.setItem('active_topic_id', activeTopicId);
+      } else {
+        localStorage.removeItem('active_topic_id');
+      }
+    } catch (e) {}
+  }, [activeTopicId]);
+
+  // Sync history to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('topic_history', JSON.stringify(history));
+    } catch (e) {
+      console.error("Failed to save history to localStorage:", e);
+    }
+  }, [history]);
+
+  // Sync active analysis variables when activeTopicId or history changes
+  useEffect(() => {
+    if (activeTopicId && history.length > 0) {
+      const item = history.find(h => h.id === activeTopicId);
+      if (item) {
+        setActiveTopicSearch(item.topic);
+        const depthLabels = { 
+          quick: 'Quick Insight', 
+          quick_insight: 'Quick Insight',
+          standard: 'Standard Analysis', 
+          standard_analysis: 'Standard Analysis',
+          deep: 'Deep Research', 
+          deep_research: 'Deep Research',
+          market: 'Market Intelligence',
+          market_intelligence: 'Market Intelligence'
+        };
+        setActiveTopicDepth(depthLabels[item.depth] || 'Standard Analysis');
+        setScannedSubreddits(item.data?.stats?.scanned_subreddits || []);
+        setTopicData(item.data);
+        setViewingMode('topic');
+      } else {
+        setActiveTopicSearch(null);
+        setActiveTopicDepth(null);
+        setTopicData(null);
+        setScannedSubreddits([]);
+        setViewingMode('empty');
+      }
+    } else {
+      setActiveTopicSearch(null);
+      setActiveTopicDepth(null);
+      setTopicData(null);
+      setScannedSubreddits([]);
+      setViewingMode('empty');
+    }
+  }, [activeTopicId, history]);
 
   const setTopicSearchSuccess = (data) => {
-    setActiveTopicSearch(data.topic);
-    setViewingMode('topic');
-    const depthLabels = { 
-      quick: 'Quick Insight', 
-      standard: 'Standard Analysis', 
-      deep: 'Deep Research', 
-      market: 'Market Intelligence' 
+    const timestamp = Date.now();
+    const id = `${data.topic}_${timestamp}`;
+    const newAnalysis = {
+      id,
+      topic: data.topic,
+      depth: data.depth,
+      timestamp,
+      data
     };
-    setActiveTopicDepth(depthLabels[data.depth] || 'Standard Analysis');
-    setScannedSubreddits(data.stats?.scanned_subreddits || []);
-    setTopicData(data);
+
+    setHistory(prev => {
+      // Remove duplicate topic names (case-insensitive) to prevent listing clutters
+      const filtered = prev.filter(h => h.topic.toLowerCase() !== data.topic.toLowerCase());
+      // Slice to maximum 50 elements to prevent localStorage bloat
+      return [newAnalysis, ...filtered].slice(0, 50);
+    });
+
+    setActiveTopicId(id);
+    setViewingMode('topic');
+  };
+
+  const selectAnalysis = (id) => {
+    const item = history.find(h => h.id === id);
+    if (item) {
+      setActiveTopicId(id);
+      setViewingMode('topic');
+    }
+  };
+
+  const deleteAnalysis = (id) => {
+    setHistory(prev => {
+      const filtered = prev.filter(h => h.id !== id);
+      // Auto-fallback if the deleted was active
+      if (activeTopicId === id) {
+        if (filtered.length > 0) {
+          setActiveTopicId(filtered[0].id);
+        } else {
+          setActiveTopicId(null);
+        }
+      }
+      return filtered;
+    });
+  };
+
+  const clearAllHistory = () => {
+    setHistory([]);
+    setActiveTopicId(null);
+    setViewingMode('empty');
+  };
+
+  const renameAnalysis = (id, newName) => {
+    if (!newName || !newName.trim()) return;
+    setHistory(prev => prev.map(h => {
+      if (h.id === id) {
+        return { ...h, topic: newName.trim() };
+      }
+      return h;
+    }));
   };
 
   const clearTopicSearch = () => {
-    setActiveTopicSearch(null);
-    setActiveTopicDepth(null);
-    setTopicData(null);
-    setScannedSubreddits([]);
+    setActiveTopicId(null);
     setViewingMode('empty');
   };
 
   return (
     <TopicContext.Provider value={{
+      history,
+      activeTopicId,
       activeTopicSearch,
       activeTopicDepth,
       topicData,
@@ -43,7 +216,13 @@ export function TopicProvider({ children }) {
       viewingMode,
       setViewingMode,
       setTopicSearchSuccess,
-      clearTopicSearch
+      selectAnalysis,
+      deleteAnalysis,
+      clearAllHistory,
+      renameAnalysis,
+      clearTopicSearch,
+      pendingTopicTrigger,
+      setPendingTopicTrigger
     }}>
       {children}
     </TopicContext.Provider>

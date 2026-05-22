@@ -11,7 +11,7 @@ import {
   CartesianGrid, Tooltip, Legend,
   Cell
 } from 'recharts';
-import { useTopic, EmptyState } from '../context/TopicContext';
+import { useTopic, EmptyState, CachedAnalysisBanner } from '../context/TopicContext';
 
 function Trends() {
   const { activeTopicSearch, topicData } = useTopic();
@@ -100,6 +100,7 @@ function Trends() {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <div>
+          <CachedAnalysisBanner />
           <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
             Analytics & Trends
           </div>

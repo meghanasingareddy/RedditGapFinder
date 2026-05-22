@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { Eye, TrendingUp, AlertCircle, Sparkles } from 'lucide-react';
-import { useTopic, EmptyState } from '../context/TopicContext';
+import { useTopic, EmptyState, CachedAnalysisBanner } from '../context/TopicContext';
 
 function Competitors() {
   const { activeTopicSearch, topicData } = useTopic();
@@ -47,6 +47,7 @@ function Competitors() {
       transition={{ duration: 0.3 }}
     >
       <div style={{ marginBottom: '2.5rem' }}>
+        <CachedAnalysisBanner />
         <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
           Market Intelligence
         </div>

@@ -1,6 +1,7 @@
 import time
 import json
-from fastapi import FastAPI, Depends, HTTPException, Query
+from datetime import datetime
+from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
@@ -485,6 +486,14 @@ def post_search_topic(request: TopicSearchRequest):
             "payload": payload
         }
         return payload
+    except ValueError as ve:
+        # Clear rate limit if it failed, so the user can try again immediately
+        if topic_clean in topic_rate_limit:
+            del topic_rate_limit[topic_clean]
+        raise HTTPException(
+            status_code=400,
+            detail=str(ve)
+        )
     except Exception as e:
         # Clear rate limit if it errored, so the user can try again
         if topic_clean in topic_rate_limit:
@@ -493,6 +502,29 @@ def post_search_topic(request: TopicSearchRequest):
             status_code=500,
             detail=f"Analysis failed: {str(e)}"
         )
+
+TRACKING_FILE = "search_tracking.json"
+
+@app.post("/api/track-search")
+async def track_search(request: Request):
+    data = await request.json()
+    
+    # Store anonymously - no user ID, no IP, no personal data
+    track_entry = {
+        "topic": data.get("topic"),
+        "depth": data.get("depth"),
+        "timestamp": datetime.now().isoformat(),
+        "session_id": data.get("session_id")  # Random browser session ID only
+    }
+    
+    # Append to JSON file (or use SQLite for better performance)
+    try:
+        with open(TRACKING_FILE, "a") as f:
+            f.write(json.dumps(track_entry) + "\n")
+    except:
+        pass  # Fail silently - don't break user experience
+    
+    return {"status": "tracked"}
 
 @app.get("/api/subreddits/suggest")
 def get_subreddit_suggestions(q: str = Query(..., description="Autocomplete query")):
