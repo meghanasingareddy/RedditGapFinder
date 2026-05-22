@@ -1,5 +1,5 @@
 export const CONFIG = {
-  API_BASE_URL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000',
+  API_BASE_URL: import.meta.env.VITE_API_URL || 'https://redditgapfinder-backend.onrender.com',
   FIREBASE: {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCqvoOFFZoFI-J808EWyfz-CcWJom026cU",
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "redditgapfinder-meghna.firebaseapp.com",

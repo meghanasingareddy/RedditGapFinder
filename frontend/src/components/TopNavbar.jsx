@@ -41,7 +41,7 @@ function TopNavbar({ onToggleMenu, isMobile }) {
         loading: false,
         online: false,
         mode: 'offline',
-        details: 'Cannot connect to backend API server. Make sure the FastAPI application is running locally on port 8000.',
+        details: 'Backend server is temporarily unreachable. This may be because the server is waking up (Render free tier sleeps after inactivity). Please wait 30–60 seconds and try refreshing.',
         reddit_client_configured: false
       });
     } finally {
@@ -58,9 +58,19 @@ function TopNavbar({ onToggleMenu, isMobile }) {
 
   // Determine badge styling based on connection state
   const getBadgeStyle = () => {
+    if (status.loading) {
+      return {
+        text: 'Connecting...',
+        color: '#98a2b3',
+        bgColor: 'rgba(152, 162, 179, 0.08)',
+        borderColor: 'rgba(152, 162, 179, 0.2)',
+        glowColor: 'rgba(152, 162, 179, 0.2)',
+        icon: <RefreshCw size={13} color="#98a2b3" className="spin-active" />
+      };
+    }
     if (!status.online) {
       return {
-        text: 'API Offline',
+        text: 'Server Offline',
         color: '#f04438',
         bgColor: 'rgba(240, 68, 56, 0.1)',
         borderColor: 'rgba(240, 68, 56, 0.3)',
@@ -70,7 +80,7 @@ function TopNavbar({ onToggleMenu, isMobile }) {
     }
     if (status.mode === 'mock_fallback') {
       return {
-        text: 'Simulated Sandbox',
+        text: 'Demo Mode',
         color: '#f79009',
         bgColor: 'rgba(247, 144, 9, 0.08)',
         borderColor: 'rgba(247, 144, 9, 0.25)',
@@ -91,6 +101,7 @@ function TopNavbar({ onToggleMenu, isMobile }) {
   const badge = getBadgeStyle();
 
   return (
+    <>
     <div className="top-navbar" style={{ position: 'relative' }}>
       {/* Injecting micro-animations and glow effects */}
       <style>{`
@@ -379,6 +390,72 @@ REDDIT_USER_AGENT=RedditGapFinder/1.0`}
         )}
       </div>
     </div>
+
+    {/* Connection Error Banner — shown below navbar when backend is offline */}
+    {!status.loading && !status.online && (
+      <div style={{
+        background: 'rgba(240, 68, 56, 0.07)',
+        borderBottom: '1px solid rgba(240, 68, 56, 0.2)',
+        padding: '10px 20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '1rem',
+        flexWrap: 'wrap'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            background: 'rgba(240, 68, 56, 0.15)',
+            borderRadius: '6px',
+            padding: '5px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <ShieldAlert size={14} color="#f04438" />
+          </div>
+          <div>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f04438', display: 'block', lineHeight: 1.3 }}>
+              Backend Server Offline
+            </span>
+            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', lineHeight: 1.4 }}>
+              The analysis server may be waking up (free tier sleeps after inactivity). Features requiring live data are temporarily unavailable.
+            </span>
+          </div>
+        </div>
+        <button
+          onClick={fetchStatus}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 14px',
+            borderRadius: '8px',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            background: 'rgba(240, 68, 56, 0.1)',
+            border: '1px solid rgba(240, 68, 56, 0.3)',
+            color: '#f04438',
+            transition: 'all 0.2s',
+            whiteSpace: 'nowrap',
+            flexShrink: 0
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(240, 68, 56, 0.2)';
+            e.currentTarget.style.borderColor = '#f04438';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(240, 68, 56, 0.1)';
+            e.currentTarget.style.borderColor = 'rgba(240, 68, 56, 0.3)';
+          }}
+        >
+          <RefreshCw size={12} className={refreshing ? 'spin-active' : ''} />
+          Retry Connection
+        </button>
+      </div>
+    )}
+    </>
   );
 }
 
