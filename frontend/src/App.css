@@ -186,6 +186,55 @@ select option {
 /* ==========================================================================
    RESPONSIVE LAYOUTS & MOBILE DRAWER
    ========================================================================== */
+   
+.app-container {
+  display: grid;
+  grid-template-columns: var(--left-width, 240px) 6px 1fr 6px var(--right-width, 300px);
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* TABLET MEDIA QUERY (768px - 1200px) */
+@media (min-width: 768px) and (max-width: 1200px) {
+  .app-container {
+    grid-template-columns: var(--left-width, 240px) 6px 1fr !important;
+    grid-template-rows: 1fr auto !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+  }
+
+  .right-divider {
+    display: none !important;
+  }
+
+  .center-content {
+    grid-column: 3 / 4 !important;
+    grid-row: 1 / 2 !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  .right-sidebar {
+    grid-column: 3 / 4 !important;
+    grid-row: 2 / 3 !important;
+    width: auto !important;
+    height: auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 1.5rem !important;
+    border-top: 1px solid var(--border-color) !important;
+    border-left: none !important;
+    padding: 1.5rem !important;
+    overflow-y: visible !important;
+  }
+
+  .right-sidebar > div {
+    margin-bottom: 0 !important;
+  }
+}
+
+/* MOBILE MEDIA QUERY (< 768px) */
 @media (max-width: 768px) {
   /* Override the JSX inline styles for grid columns */
   .app-container {
@@ -210,13 +259,30 @@ select option {
     box-sizing: border-box !important;
   }
 
-  /* Hide resizing separators and right sidebar on mobile */
-  .layout-divider, 
-  .right-sidebar {
+  /* Hide resizing separators and display right sidebar at the bottom of standard scroll */
+  .layout-divider {
     display: none !important;
   }
 
-  /* Drawer implementation for sidebar */
+  .right-sidebar {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    border-top: 1px solid var(--border-color) !important;
+    padding: 1.5rem !important;
+    background: var(--bg-color) !important;
+    overflow-y: visible !important;
+  }
+  
+  .right-sidebar > div {
+    margin-bottom: 2rem !important;
+  }
+  
+  .right-sidebar > div:last-child {
+    margin-bottom: 0 !important;
+  }
+
+  /* Drawer implementation for left sidebar */
   .left-sidebar {
     position: fixed !important;
     top: 0;
@@ -272,6 +338,19 @@ select option {
   .overview-stats-grid {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 1rem !important;
+  }
+
+  /* Welcome search board collapses to full-width stacked columns */
+  .welcome-board-grid {
+    grid-template-columns: 1fr !important;
+    padding: 0 1rem 1rem !important;
+    gap: 1rem !important;
+  }
+
+  /* Expansion touch targets for forms on mobile */
+  .welcome-search-input,
+  input[type="text"] {
+    min-height: 44px !important;
   }
 }
 

@@ -289,10 +289,8 @@ function AppContent() {
     <div 
       className={`app-container ${isResizingLeft || isResizingRight ? 'is-resizing' : ''}`}
       style={{
-        display: 'grid',
-        gridTemplateColumns: `${leftWidth}px 6px 1fr 6px ${rightWidth}px`,
-        height: '100vh',
-        overflow: 'hidden'
+        '--left-width': `${leftWidth}px`,
+        '--right-width': `${rightWidth}px`
       }}
     >
       {/* Mobile backdrop */}

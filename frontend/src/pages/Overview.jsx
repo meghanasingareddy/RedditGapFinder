@@ -384,10 +384,10 @@ function Overview() {
         }
         .welcome-topic-chip-grid {
           display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          justify-content: center;
-          padding: 8px 10px;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 12px;
           border-radius: 8px;
           font-size: 0.76rem;
           cursor: pointer;
@@ -396,11 +396,11 @@ function Overview() {
           color: #ffffff;
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           text-align: left;
-          height: 48px;
+          height: 44px;
           width: 100%;
           box-sizing: border-box;
           overflow: hidden;
-          text-overflow: ellipsis;
+          gap: 8px;
         }
         .welcome-topic-chip-grid:hover {
           background: rgba(139,124,255,0.08);
@@ -414,14 +414,37 @@ function Overview() {
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          width: 100%;
+          flex: 1;
         }
         .welcome-topic-chip-grid .topic-category {
-          font-size: 0.62rem;
+          margin: 0;
+          padding: 2px 8px;
+          line-height: 1.2;
+          font-size: 0.625rem;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
           color: var(--text-muted);
-          margin-top: 2px;
+          display: inline-block;
+          white-space: nowrap;
           text-transform: uppercase;
           letter-spacing: 0.03em;
+          flex-shrink: 0;
+        }
+        @media (max-width: 768px) {
+          .topics-grid {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            gap: 8px !important;
+            padding-bottom: 8px !important;
+            -webkit-overflow-scrolling: touch;
+          }
+          .welcome-topic-chip-grid {
+            width: auto !important;
+            flex-shrink: 0 !important;
+          }
         }
         .show-more-btn {
           display: flex;
@@ -499,7 +522,7 @@ function Overview() {
       </div>
 
       {/* 2-column workspace: Trending Topics + Analysis Depth */}
-      <div style={{
+      <div className="welcome-board-grid" style={{
         display: 'grid', gridTemplateColumns: '1fr 1fr',
         gap: '1.25rem', padding: '0 2rem 2rem',
         maxWidth: '1100px', margin: '0 auto',

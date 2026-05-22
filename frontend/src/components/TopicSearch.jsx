@@ -458,7 +458,7 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
                       <span>{item.topic}</span>
                     </div>
                     {item.category && (
-                      <span style={{ fontSize: '0.625rem', padding: '2px 6px', background: 'var(--hover-bg)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-muted)' }}>
+                      <span className="trending-badge">
                         {item.category}
                       </span>
                     )}
@@ -568,7 +568,7 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
             disabled={!query.trim()}
             style={{
               background: query.trim() ? 'var(--primary-color)' : 'rgba(139,124,255,0.2)',
-              border: 'none', color: '#fff', padding: '0 20px', height: '40px',
+              border: 'none', color: '#fff', padding: '0 20px', height: '44px',
               borderRadius: '10px', fontWeight: 600, fontSize: '0.875rem',
               cursor: query.trim() ? 'pointer' : 'default', whiteSpace: 'nowrap',
               transition: 'all 0.2s'
@@ -691,12 +691,25 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 0.5rem 0.75rem;
+          padding: 8px 12px;
           border-radius: 6px;
           font-size: 0.8rem;
           color: var(--text-main);
           cursor: pointer;
           transition: all 0.15s;
+          min-height: 44px;
+          box-sizing: border-box;
+        }
+        .trending-badge {
+          margin: 0;
+          padding: 2px 8px;
+          line-height: 1.2;
+          font-size: 0.625rem;
+          background: var(--hover-bg);
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          color: var(--text-muted);
+          display: inline-block;
         }
         .trending-item:hover {
           background: var(--hover-bg);
