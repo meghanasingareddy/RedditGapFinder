@@ -1,5 +1,6 @@
 import time
 import random
+import re
 import requests
 import scraper
 import nlp
@@ -12,11 +13,81 @@ DEPTH_CONFIGS = {
     "market": {"subreddits": 20, "posts_per_sub": 8, "label": "Market Intelligence", "expected_time": "2m"}
 }
 
+def generate_fallback_subreddits(topic: str, limit: int = 25) -> list[str]:
+    """
+    Generates a list of highly relevant, real-world subreddits based on the topic keywords,
+    serving as a robust mock or fallback when the live Reddit Search API is blocked or rate-limited.
+    """
+    topic_lower = topic.lower().strip()
+    
+    # 1. Tech & CS & Software & AI
+    if any(k in topic_lower for k in ["cs", "dev", "code", "tech", "web", "program", "software", "ai", "ml", "chatgpt", "machine", "algorithm", "data"]):
+        subreddits = [
+            "cscareerquestions", "webdev", "programming", "technology", "ChatGPT",
+            "MachineLearning", "softwareengineering", "learnprogramming", "artificial",
+            "datascience", "node", "reactjs", "python", "javascript", "devops"
+        ]
+    # 2. SaaS & Startups & Business & Indie & Marketing & Hustles
+    elif any(k in topic_lower for k in ["saas", "startup", "entrepreneur", "business", "indie", "hustle", "marketing", "sales", "solopreneur", "founder", "product", "growth"]):
+        subreddits = [
+            "SideHustle", "SaaS", "startups", "Entrepreneur", "Business", "indiehackers",
+            "marketing", "sales", "solopreneur", "smallbusiness", "ProductManagement",
+            "GrowthHacking", "ecommerce", "workfromhome"
+        ]
+    # 3. Finance & Money & Investing & Crypto & Budgeting
+    elif any(k in topic_lower for k in ["finance", "money", "budget", "personal", "crypto", "bitcoin", "invest", "passive", "fire", "stock", "wealth", "saving"]):
+        subreddits = [
+            "personalfinance", "FinancialIndependence", "investing", "stocks", "CryptoCurrency",
+            "passiveincome", "Budgeting", "povertyfinance", "WallStreetBets", "Finance",
+            "financialplanning", "tax", "dividends", "etfs", "Bitcoin"
+        ]
+    # 4. Design & UI/UX & Creative
+    elif any(k in topic_lower for k in ["design", "figma", "ui", "ux", "graphic", "illustration", "creative", "art", "frontend"]):
+        subreddits = [
+            "UIUX", "FigmaDesign", "webdesign", "graphicdesign", "ProductDesign",
+            "userexperience", "designthought", "CreativeProfessionals", "frontend", "ArtistLounge"
+        ]
+    # 5. Education & Studying & Career
+    elif any(k in topic_lower for k in ["education", "study", "college", "school", "student", "course", "learn", "career", "job"]):
+        subreddits = [
+            "education", "study", "college", "school", "students", "learning",
+            "homeworkhelp", "onlinelearning", "careerguidance", "jobs", "resumes"
+        ]
+    # 6. General fallback based on the topic name itself
+    else:
+        cleaned_topic = re.sub(r'[^a-zA-Z0-9]', '', topic.title())
+        subreddits = [
+            cleaned_topic,
+            f"{cleaned_topic}Startups",
+            f"Learn{cleaned_topic}",
+            f"{cleaned_topic}Community",
+            f"{cleaned_topic}Pro",
+            "productivity",
+            "selfimprovement",
+            "remote-work",
+            "digitalnomad",
+            "worklifebalance"
+        ]
+        
+    # Standardize list formatting
+    result = []
+    for sub in subreddits:
+        sub_clean = sub.replace("r/", "").strip()
+        if sub_clean and sub_clean not in result:
+            result.append(sub_clean)
+            
+    return result[:limit]
+
 def search_reddit_subreddits(topic: str, limit: int = 25) -> list[str]:
     """
     Search for subreddits related to a specific topic using Reddit's public API.
-    Bypasses authentication.
+    Bypasses authentication. Falls back gracefully to curated communities on failure or rate-limits.
     """
+    # If mock fallback mode is active, skip the network request entirely
+    if scraper.is_using_mock_fallback():
+        print(f"[TOPIC SEARCH] Mock fallback mode is ACTIVE. Generating simulated subreddits for '{topic}'.")
+        return generate_fallback_subreddits(topic, limit)
+
     import urllib.parse
     encoded_topic = urllib.parse.quote(topic)
     url = f"https://www.reddit.com/api/subreddits/search.json?q={encoded_topic}&limit={limit}"
@@ -40,14 +111,17 @@ def search_reddit_subreddits(topic: str, limit: int = 25) -> list[str]:
                 if display_name:
                     subreddits.append(display_name)
                     
-            print(f"[TOPIC SEARCH] Found {len(subreddits)} subreddits for topic '{topic}'.")
-            return subreddits
+            if subreddits:
+                print(f"[TOPIC SEARCH] Found {len(subreddits)} subreddits for topic '{topic}'.")
+                return subreddits
+            else:
+                print(f"[TOPIC SEARCH] Reddit search API returned empty result for '{topic}'. Using smart fallback.")
         else:
-            print(f"[TOPIC SEARCH] Reddit search API returned status {response.status_code}")
+            print(f"[TOPIC SEARCH] Reddit search API returned status {response.status_code}. Using smart fallback.")
     except Exception as e:
-        print(f"[TOPIC SEARCH] Error searching subreddits: {e}")
+        print(f"[TOPIC SEARCH] Error searching subreddits: {e}. Using smart fallback.")
         
-    return []
+    return generate_fallback_subreddits(topic, limit)
 
 def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=None) -> dict:
     """
