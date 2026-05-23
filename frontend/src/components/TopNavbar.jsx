@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Sun, Bell, ChevronDown, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw, RotateCcw, LogIn, Menu } from 'lucide-react';
+import { Search, Bell, ChevronDown, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw, RotateCcw, LogIn, Menu } from 'lucide-react';
 import axios from 'axios';
 import { CONFIG } from '../config';
 import { useAuth } from '../context/AuthContext';
@@ -17,6 +17,29 @@ function TopNavbar({ onToggleMenu, isMobile }) {
   const { user, loginWithGoogle, logout } = useAuth();
   const { activeTopicSearch, clearTopicSearch } = useTopic();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setShowUserMenu(false);
+      }
+    };
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowUserMenu(false);
+      }
+    };
+
+    if (showUserMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showUserMenu]);
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && query.trim()) {
@@ -158,7 +181,7 @@ function TopNavbar({ onToggleMenu, isMobile }) {
         }
         .user-menu-dropdown {
           position: absolute;
-          top: 55px;
+          top: calc(100% + 8px);
           right: 0;
           width: 220px;
           background: rgba(23, 27, 34, 0.96);
@@ -167,7 +190,7 @@ function TopNavbar({ onToggleMenu, isMobile }) {
           padding: 0.5rem;
           box-shadow: 0 20px 40px rgba(0,0,0,0.6);
           backdrop-filter: blur(16px);
-          z-index: 1000;
+          z-index: 99999;
         }
         .user-menu-item {
           display: flex;
@@ -233,7 +256,7 @@ function TopNavbar({ onToggleMenu, isMobile }) {
         
         {!isMobile && (
           <div className="navbar-search-wrapper" style={{ position: 'relative', flex: 1, maxWidth: '420px' }}>
-            <Search size={16} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+            <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input 
               type="text" 
               placeholder="Search problems, subreddits, topics..." 
@@ -243,9 +266,6 @@ function TopNavbar({ onToggleMenu, isMobile }) {
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
             />
-            <div style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.7rem', color: 'var(--text-muted)', border: '1px solid var(--border-color)', padding: '2px 6px', borderRadius: '4px' }}>
-              Enter
-            </div>
           </div>
         )}
       </div>
@@ -341,8 +361,7 @@ REDDIT_USER_AGENT=RedditGapFinder/1.0`}
           </div>
         )}
 
-        {!isMobile && <Sun size={18} color="var(--text-muted)" className="navbar-icon" style={{ cursor: 'pointer' }} />}
-        {!isMobile && <Bell size={18} color="var(--text-muted)" className="navbar-icon" style={{ cursor: 'pointer' }} />}
+        {!isMobile && <Bell size={20} color="var(--text-muted)" className="navbar-icon" style={{ cursor: 'pointer' }} />}
 
         {/* User section — real user data or Sign In button */}
         {user ? (
@@ -350,6 +369,7 @@ REDDIT_USER_AGENT=RedditGapFinder/1.0`}
             className="navbar-user-section"
             style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', position: 'relative' }}
             onClick={() => setShowUserMenu(!showUserMenu)}
+            ref={userMenuRef}
           >
             <img 
               src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=171b22&color=f5f7fb`} 

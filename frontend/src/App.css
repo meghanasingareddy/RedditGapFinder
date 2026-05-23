@@ -139,7 +139,7 @@
   border: 1px solid var(--border-color);
   border-radius: 6px;
   padding: 0.5rem 1rem;
-  color: #ffffff !important;
+  color: var(--text-main) !important;
   width: 300px;
   font-size: 0.85rem;
   outline: none;
@@ -154,11 +154,11 @@
    GLOBAL SEARCH & INPUTS TEXT COLOR VISIBILITY FIX
    ========================================================================== */
 input, select, textarea {
-  color: #ffffff !important;
+  color: var(--input-text) !important;
 }
 
 input::placeholder, textarea::placeholder {
-  color: rgba(255, 255, 255, 0.4) !important;
+  color: var(--input-placeholder) !important;
 }
 
 /* Ensure autofill doesn't break visibility in dark mode */
@@ -172,15 +172,15 @@ select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
   border: 1px solid var(--border-color) !important;
-  -webkit-text-fill-color: #ffffff !important;
-  -webkit-box-shadow: 0 0 0px 1000px #171b22 inset !important;
+  -webkit-text-fill-color: var(--input-text) !important;
+  -webkit-box-shadow: 0 0 0px 1000px var(--input-bg) inset !important;
   transition: background-color 5000s ease-in-out 0s !important;
 }
 
 /* Select options styling in dark mode */
 select option {
-  background-color: #171b22 !important;
-  color: #ffffff !important;
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
 }
 
 /* ==========================================================================
@@ -290,10 +290,10 @@ select option {
     width: 280px !important;
     height: 100vh !important;
     z-index: 10000 !important;
-    background: #0f1115 !important;
+    background: var(--bg-color) !important;
     border-right: 1px solid var(--border-color) !important;
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    box-shadow: 20px 0 40px rgba(0, 0, 0, 0.6) !important;
+    box-shadow: 20px 0 40px rgba(0, 0, 0, 0.4) !important;
   }
 
   .left-sidebar.mobile-open {
@@ -366,6 +366,7 @@ select option {
   .painpoints-details-grid,
   .search-metrics-grid,
   .search-results-grid,
+  .executive-summary-layout-grid,
   .startup-ideas-card-grid {
     grid-template-columns: 1fr !important;
     gap: 1.5rem !important;
@@ -389,14 +390,16 @@ select option {
   .trends-layout-grid > div,
   .reports-layout-grid > div,
   .painpoints-details-grid > div,
-  .search-results-grid > div {
+  .search-results-grid > div,
+  .executive-summary-layout-grid > div {
     margin-bottom: 1rem;
   }
 
   .trends-layout-grid > div:last-child,
   .reports-layout-grid > div:last-child,
   .painpoints-details-grid > div:last-child,
-  .search-results-grid > div:last-child {
+  .search-results-grid > div:last-child,
+  .executive-summary-layout-grid > div:last-child {
     margin-bottom: 0;
   }
 }

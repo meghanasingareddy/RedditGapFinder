@@ -580,8 +580,8 @@ function TopicSearch({ onSearchSuccess, onSearchStart, onSearchError, onProgress
             disabled={!query.trim()}
             style={{
               background: query.trim() ? 'var(--primary-color)' : 'rgba(139,124,255,0.2)',
-              border: 'none', color: '#fff', padding: '0 20px', height: '44px',
-              borderRadius: '10px', fontWeight: 600, fontSize: '0.875rem',
+              border: 'none', color: '#fff', padding: '0 24px', height: '44px',
+              borderRadius: '9999px', fontWeight: 600, fontSize: '0.875rem',
               cursor: query.trim() ? 'pointer' : 'default', whiteSpace: 'nowrap',
               transition: 'all 0.2s'
             }}

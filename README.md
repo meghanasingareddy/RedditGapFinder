@@ -1,12 +1,16 @@
-# RedditGapFinder
+# RedditGapFinder - Discover Startup Ideas from Reddit Conversations
 
-Discover startup ideas from real Reddit frustrations.
+<p align="center">
+  <img src="frontend/src/assets/logo.svg" alt="RedditGapFinder Logo" width="120" />
+</p>
+
+> Discover startup opportunities by analyzing real Reddit conversations. Search any topic, find pain points, and get AI-generated startup ideas.
 
 **Live Application:** [https://frontend-xi-taupe-49.vercel.app](https://frontend-xi-taupe-49.vercel.app)
 
 RedditGapFinder is an AI-powered, full-stack market-research and SaaS discovery platform. It scans Reddit discussions in real-time to locate unmet needs, product gaps, and lucrative business opportunities. By parsing user frustrations and clustering recurring complaints, it acts as a crystal ball for your next startup idea.
 
-**GitHub Topics:** `reddit`, `startup-ideas`, `nlp`, `market-research`, `opportunity-finder`
+**GitHub Topics:** `reddit`, `startup-ideas`, `nlp`, `market-research`, `opportunity-finder`, `saas`, `entrepreneur`, `business-intelligence`, `sentiment-analysis`, `market-gaps`, `product-validation`, `startup-tools`, `reddit-scraper`, `fastapi`, `react`
 
 ---
 

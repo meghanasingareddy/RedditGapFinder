@@ -73,19 +73,23 @@ function LeftSidebar({ isOpen, onClose, isMobile }) {
     const fetchLiveData = async () => {
       try {
         const res = await axios.get(`${CONFIG.API_BASE_URL}/api/stats`);
-        const subs = (res.data.tracked_subreddits || []).slice(0, 3).map(s => ({
-          name: s.name.startsWith('r/') ? s.name : `r/${s.name}`,
-          posts: s.posts
+        const subs = (res.data && res.data.tracked_subreddits || []).slice(0, 3).map(s => ({
+          name: s.name && s.name.startsWith('r/') ? s.name : `r/${s.name || ''}`,
+          posts: s.posts || 0
         }));
         setLiveSubs(subs);
       } catch (e) {
         // Fallback: try to get from subreddits endpoint
         try {
           const res = await axios.get(`${CONFIG.API_BASE_URL}/api/subreddits`);
-          setLiveSubs(res.data.slice(0, 3).map(s => ({
-            name: s.subreddit,
-            posts: s.mentions || 0
-          })));
+          if (res.data && Array.isArray(res.data)) {
+            setLiveSubs(res.data.slice(0, 3).map(s => ({
+              name: s.subreddit,
+              posts: s.mentions || 0
+            })));
+          } else {
+            setLiveSubs([]);
+          }
         } catch (e2) {}
       }
     };

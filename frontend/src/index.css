@@ -7,9 +7,27 @@
   --primary-color: #8b7cff;
   --success-color: #22c55e;
   --text-main: #f5f7fb;
+  --text-secondary: #e2e8f0;
   --text-muted: #98a2b3;
   --hover-bg: #1c212a;
+  
+  /* Inputs & UI elements */
+  --input-bg: #171b22;
+  --input-text: #ffffff;
+  --input-placeholder: rgba(255, 255, 255, 0.4);
+  --shadow-color: rgba(0, 0, 0, 0.4);
+  
+  /* Premium Glass overlays and borders */
+  --card-bg-overlay: rgba(255, 255, 255, 0.015);
+  --card-bg-hover: rgba(255, 255, 255, 0.035);
+  --panel-bg-glass: rgba(23, 27, 34, 0.8);
+  --panel-bg-glass-heavy: rgba(23, 27, 34, 0.95);
+  --border-color-subtle: rgba(255, 255, 255, 0.06);
+  --shadow-premium: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+
+
 
 * {
   box-sizing: border-box;
@@ -25,9 +43,13 @@ html, body, #root {
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg-color);
-  color: var(--text-main);
+  color: var(--text-secondary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-main);
 }
 
 a {
@@ -78,7 +100,7 @@ a {
 
 .btn-outline {
   background: transparent;
-  color: var(--text-main);
+  color: var(--text-secondary);
   border: 1px solid var(--border-color);
   padding: 0.4rem 0.85rem;
   height: 36px;
@@ -113,4 +135,19 @@ a {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+/* Pain Points Table Styles */
+.table-header-row {
+  background: transparent;
+  transition: background-color 0.25s ease;
+}
+
+.table-item-row {
+  background: transparent;
+  transition: background-color 0.25s ease;
+  border-bottom: 1px solid var(--border-color);
+}
+.table-item-row:hover {
+  background: var(--hover-bg);
 }

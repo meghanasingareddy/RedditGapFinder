@@ -330,13 +330,13 @@ function Reports() {
             <div>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'white', marginBottom: '0.75rem' }}>Core Opportunity Clusters</h3>
               <div style={{ border: '1px solid var(--border-color)', borderRadius: '6px', overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 120px', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                <div className="table-header-row" style={{ display: 'grid', gridTemplateColumns: '40px 1fr 120px', padding: '0.5rem 1rem', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                   <div>#</div>
                   <div>TOPIC CLUSTER</div>
                   <div style={{ textAlign: 'right' }}>OPPORTUNITY SCORE</div>
                 </div>
                 {JSON.parse(selectedReport.data).top_pain_points?.map((item) => (
-                  <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '40px 1fr 120px', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem', alignItems: 'center' }}>
+                  <div key={item.id} className="table-item-row" style={{ display: 'grid', gridTemplateColumns: '40px 1fr 120px', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem', alignItems: 'center' }}>
                     <div style={{ color: 'var(--text-muted)' }}>{item.id}</div>
                     <div style={{ color: 'white', fontWeight: 500 }}>{item.text}</div>
                     <div style={{ textAlign: 'right', color: 'var(--primary-color)', fontWeight: 600 }}>{item.score}/100</div>
