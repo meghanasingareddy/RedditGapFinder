@@ -352,6 +352,53 @@ select option {
   input[type="text"] {
     min-height: 44px !important;
   }
+
+  /* Support document-level scrolling on mobile viewports */
+  html, body, #root {
+    height: auto !important;
+    overflow: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Force collapse of multi-column layouts to single columns on mobile */
+  .trends-layout-grid,
+  .reports-layout-grid,
+  .painpoints-details-grid,
+  .search-metrics-grid,
+  .search-results-grid,
+  .startup-ideas-card-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  /* Specific metrics grid responsive collapse */
+  .metrics-card-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1rem !important;
+  }
+
+  /* Custom cleanups for collapsed grid cards on mobile */
+  .startup-ideas-item-grid > div:first-child {
+    border-right: none !important;
+    padding-right: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    padding-bottom: 1.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .trends-layout-grid > div,
+  .reports-layout-grid > div,
+  .painpoints-details-grid > div,
+  .search-results-grid > div {
+    margin-bottom: 1rem;
+  }
+
+  .trends-layout-grid > div:last-child,
+  .reports-layout-grid > div:last-child,
+  .painpoints-details-grid > div:last-child,
+  .search-results-grid > div:last-child {
+    margin-bottom: 0;
+  }
 }
 
 @media (max-width: 576px) {
@@ -362,6 +409,10 @@ select option {
 
 @media (max-width: 480px) {
   .overview-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .metrics-card-grid {
     grid-template-columns: 1fr !important;
   }
 }

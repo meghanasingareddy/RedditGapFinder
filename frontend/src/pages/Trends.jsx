@@ -167,7 +167,7 @@ function Trends() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+          <div className="trends-layout-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
             {/* Sentiment breakdown */}
             <div className="panel" style={{ height: '320px', display: 'flex', flexDirection: 'column' }}>
               <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '1.5rem' }}>Sentiment Distribution (All Reddit Mentions)</h3>

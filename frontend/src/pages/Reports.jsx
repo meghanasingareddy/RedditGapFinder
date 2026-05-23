@@ -219,7 +219,7 @@ function Reports() {
       transition={{ duration: 0.3 }}
     >
       <CachedAnalysisBanner />
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
+      <div className="reports-layout-grid" style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
         {/* Sidebar: reports selection & creation */}
       <div>
         <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem' }}>Saved Intelligence Reports</h2>
@@ -304,7 +304,7 @@ function Reports() {
             </div>
 
             {/* Metrics cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+            <div className="metrics-card-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
               {[
                 { label: 'Posts Analyzed', val: JSON.parse(selectedReport.data).metrics?.posts_analyzed.toLocaleString() },
                 { label: 'Pain Points', val: JSON.parse(selectedReport.data).metrics?.pain_points },

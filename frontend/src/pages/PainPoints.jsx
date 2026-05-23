@@ -157,7 +157,7 @@ function PainPoints() {
                   <span style={{ color: 'var(--text-muted)' }}>Analyzing database indexes...</span>
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '2rem' }}>
+                <div className="painpoints-details-grid" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '2rem' }}>
                   {/* Left Column: Reddit Mentions & Ideas */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     {/* Reddit mentions */}
@@ -295,7 +295,7 @@ function PainPoints() {
           No pain point clusters found matching your query.
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem' }}>
           {filteredPoints.map((point, idx) => (
             <motion.div 
               key={point.id}

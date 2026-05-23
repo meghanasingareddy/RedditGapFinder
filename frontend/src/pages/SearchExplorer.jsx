@@ -202,7 +202,7 @@ function SearchExplorer() {
             style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}
           >
             {/* Primary stats */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1.5rem' }}>
+            <div className="search-metrics-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1.5rem' }}>
               <div className="panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Analysis Scope</span>
                 <h3 style={{ fontSize: '1.25rem', color: 'white', fontWeight: 600, marginTop: '0.25rem' }}>"{result.query}"</h3>
@@ -243,7 +243,7 @@ function SearchExplorer() {
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '3rem' }}>
+                <div className="search-results-grid" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '3rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div>
                       <h4 style={{ fontSize: '0.8rem', color: 'white', fontWeight: 600, marginBottom: '0.25rem' }}>Problem Statement</h4>
