@@ -1,5 +1,7 @@
 import re
 import random
+import hashlib
+from collections import Counter
 
 # Try importing the heavy libraries, but don't fail if they aren't installed
 try:
@@ -116,7 +118,77 @@ def clean_text(text: str) -> str:
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+
+# ============================================================
+# STOP WORDS — comprehensive list for better keyword extraction
+# ============================================================
+
+STOP_WORDS = {
+    "about", "above", "after", "again", "against", "also", "among", "another",
+    "because", "been", "before", "being", "below", "between", "both", "could",
+    "does", "doing", "done", "down", "during", "each", "even", "every",
+    "from", "getting", "going", "gotten", "have", "having", "here", "into",
+    "just", "keep", "know", "like", "looking", "make", "making", "many",
+    "more", "most", "much", "need", "never", "only", "other", "over",
+    "people", "really", "right", "same", "should", "since", "some", "something",
+    "someone", "still", "such", "take", "than", "that", "their", "them",
+    "then", "there", "these", "they", "thing", "things", "think", "this",
+    "those", "through", "time", "trying", "until", "upon", "using", "very",
+    "want", "well", "were", "what", "when", "where", "which", "while",
+    "will", "with", "without", "would", "your", "able", "already", "always",
+    "around", "away", "back", "basically", "best", "better", "come", "completely",
+    "currently", "didn", "doesn", "don", "else", "enough", "ever", "feel",
+    "find", "first", "full", "give", "good", "great", "half", "help",
+    "however", "isn", "it's", "its", "kind", "last", "least", "less",
+    "long", "look", "made", "might", "myself", "nothing", "often", "once",
+    "open", "part", "pretty", "probably", "quite", "seem", "seems", "seen",
+    "show", "simply", "sort", "start", "sure", "tell", "though", "told",
+    "took", "true", "turn", "used", "uses", "wasn", "went", "whole",
+    "work", "works", "working", "years", "post", "posts", "reddit", "subreddit",
+    "anyone", "anything", "everything", "can't", "won't", "it", "you",
+    "the", "and", "for", "are", "but", "not", "had", "has", "was",
+    "all", "can", "her", "him", "his", "how", "may", "new", "now",
+    "old", "one", "our", "out", "own", "say", "she", "too", "two",
+    "way", "who", "why", "big", "did", "get", "got", "let", "put",
+    "run", "set", "try", "day", "end", "far", "few", "off",
+    # Temporal / generic words that make poor cluster names
+    "week", "weeks", "month", "months", "year", "today", "yesterday",
+    "tomorrow", "hours", "hour", "minute", "minutes", "second", "seconds",
+    "setting", "settings", "setup", "getting", "being", "doing", "having",
+    "going", "coming", "trying", "making", "taking", "giving", "keeping",
+    "spent", "spend", "spending", "absolutely", "absolute", "incredibly",
+    "completely", "literally", "entire", "actually", "basically", "essentially",
+    "massive", "huge", "small", "little", "large", "simple", "real",
+    "literally", "honestly", "entire", "single", "every", "another",
+}
+
+
+def _extract_keywords(text: str, max_words: int = 8) -> list[str]:
+    """Extract meaningful keywords from text, filtering stop words."""
+    words = re.findall(r'[a-zA-Z]{3,}', text.lower())
+    filtered = [w for w in words if w not in STOP_WORDS and len(w) > 3]
+    return filtered[:max_words]
+
+
+def _extract_bigrams(docs: list[str]) -> Counter:
+    """Extract meaningful bigrams (2-word phrases) from documents."""
+    bigram_counter = Counter()
+    for doc in docs:
+        words = re.findall(r'[a-zA-Z]{3,}', doc.lower())
+        filtered = [w for w in words if w not in STOP_WORDS and len(w) > 3]
+        for i in range(len(filtered) - 1):
+            bigram = f"{filtered[i]} {filtered[i+1]}"
+            bigram_counter[bigram] += 1
+    return bigram_counter
+
+
 def cluster_texts(docs: list[str]):
+    """
+    Cluster a list of text documents into meaningful topic groups.
+    Uses BERTopic when available, otherwise falls back to a sophisticated
+    keyword-frequency + bigram clustering approach that produces diverse,
+    content-specific cluster names.
+    """
     # Try BERTopic
     topic_model_instance = get_topic_model()
     if topic_model_instance:
@@ -126,33 +198,103 @@ def cluster_texts(docs: list[str]):
         except Exception:
             pass
             
-    # Zero-dependency simple keyword clustering
-    signatures = {
-        "Career & Internships": ["intern", "job", "resume", "apply", "career", "interview", "hiring"],
-        "SaaS Billing & Pricing": ["saas", "subscription", "price", "billing", "pay", "charge", "expensive"],
-        "Productivity & Bloat": ["jira", "tool", "bloat", "slow", "complex", "clunky", "interface", "linear"],
-        "Founder Burnout": ["founder", "burnout", "exhausted", "manual", "marketing", "scaling", "solo"],
-        "Personal Finance Automation": ["budget", "finance", "track", "expense", "sms", "whatsapp", "automated"],
-        "Marketing & Leads Outreach": ["market", "sale", "lead", "email", "cold", "outreach", "ads", "seo"],
-        "Design Systems & UX": ["design", "figma", "ui", "ux", "graphic", "illustration"],
-        "Educational Platforms": ["education", "study", "college", "school", "student", "course", "lms"]
-    }
+    # ============================================================
+    # ENHANCED ZERO-DEPENDENCY CLUSTERING
+    # Uses bigram extraction + TF weighting to create meaningful clusters
+    # ============================================================
     
+    if not docs:
+        return "FallbackClustering", ["General Issues"]
+    
+    # 1. Extract bigrams and unigrams across the entire corpus
+    bigram_counts = _extract_bigrams(docs)
+    
+    # 2. Also extract top unigrams
+    all_words = []
+    for doc in docs:
+        words = re.findall(r'[a-zA-Z]{3,}', doc.lower())
+        all_words.extend([w for w in words if w not in STOP_WORDS and len(w) > 3])
+    unigram_counts = Counter(all_words)
+    
+    # 3. Build candidate topic labels from top bigrams first, then unigrams
+    # Bigrams make better, more specific cluster names
+    topic_labels = []
+    seen_roots = set()
+    
+    # Add top bigrams as cluster labels (min 2 occurrences)
+    for bigram, count in bigram_counts.most_common(20):
+        if count < 2:
+            continue
+        # Skip if either word in the bigram is already represented
+        parts = bigram.split()
+        if parts[0] in seen_roots and parts[1] in seen_roots:
+            continue
+        label = bigram.title()
+        topic_labels.append((label, bigram, count))
+        seen_roots.update(parts)
+        if len(topic_labels) >= 6:
+            break
+    
+    # Fill remaining slots with top unigrams not already covered
+    for word, count in unigram_counts.most_common(30):
+        if count < 2:
+            continue
+        if word in seen_roots:
+            continue
+        label = word.title()
+        topic_labels.append((label, word, count))
+        seen_roots.add(word)
+        if len(topic_labels) >= 10:
+            break
+    
+    if not topic_labels:
+        # Ultimate fallback — create labels from the first few docs
+        for i, doc in enumerate(docs[:3]):
+            kws = _extract_keywords(doc, 3)
+            if kws:
+                label = " ".join(kws[:2]).title()
+                topic_labels.append((label, " ".join(kws[:2]).lower(), 1))
+    
+    if not topic_labels:
+        topic_labels = [("General Discussion", "general", 1)]
+    
+    # 4. Assign each document to the best-matching cluster
     topics = []
     for doc in docs:
         doc_lower = doc.lower()
-        matched = "General Frustration"
-        max_matches = 0
-        for name, keywords in signatures.items():
-            matches = sum(1 for kw in keywords if kw in doc_lower)
-            if matches > max_matches:
-                max_matches = matches
-                matched = name
-        topics.append(matched)
+        best_label = None
+        best_score = 0
         
+        for label, pattern, freq in topic_labels:
+            # Score = number of pattern word matches * frequency weight
+            pattern_words = pattern.split()
+            match_count = sum(1 for pw in pattern_words if pw in doc_lower)
+            score = match_count * (1 + freq * 0.1)
+            
+            if score > best_score:
+                best_score = score
+                best_label = label
+        
+        if best_label and best_score > 0:
+            topics.append(best_label)
+        else:
+            # Assign to the least-used existing cluster to balance sizes
+            label_usage = Counter(topics)
+            if label_usage:
+                least_used = min(topic_labels, key=lambda t: label_usage.get(t[0], 0))
+                topics.append(least_used[0])
+            else:
+                topics.append(topic_labels[0][0])
+    
     return "FallbackClustering", topics
 
+
 def generate_idea_from_cluster(topic_name: str, representative_docs: list[str]) -> dict:
+    """
+    Generate a unique startup idea based on the cluster topic and its actual documents.
+    Each call produces a contextually different result because it extracts real content
+    from the representative docs to build the idea.
+    """
     # Try DistilBART summarizer
     sum_pipeline = get_summarizer()
     combined_docs = " ".join(representative_docs[:3])
@@ -164,82 +306,157 @@ def generate_idea_from_cluster(topic_name: str, representative_docs: list[str]) 
             problem_statement = summary[0]['summary_text']
         except Exception:
             pass
-            
-    if not problem_statement:
-        problem_statement = representative_docs[0] if representative_docs else "Users experiencing high friction in this area."
-        if len(problem_statement) > 150:
-            problem_statement = problem_statement[:147] + "..."
-            
-    # Map topics to specific, realistic startup templates
-    templates = {
-        "Career & Internships": {
-            "name": "SkillMatch AI",
-            "problem": "Job seekers face a competitive black hole where ATS filters reject customized resumes, making applications feel useless.",
-            "audience": "New grads, CS career switchers, active job hunters",
-            "features": "• ATS matching rating\n• AI-assisted bullet point optimization\n• Direct routing to hiring managers",
-            "revenue_model": "Freemium ($9/mo for priority matches)"
-        },
-        "SaaS Billing & Pricing": {
-            "name": "SaaS Pricing Radar",
-            "problem": "Small businesses and bootstrappers suffer from subscription fatigue and billing spikes due to double-paying and active license waste.",
-            "audience": "Founders, digital agencies, freelancers",
-            "features": "• Browser extension checkout detector\n• Unified team license utilization audit\n• Renewal date smart push alerts",
-            "revenue_model": "SaaS ($12/mo flat per company)"
-        },
-        "Productivity & Bloat": {
-            "name": "SimpleSprint",
-            "problem": "Productivity suites like Jira and Notion are slow, confusing, and cluttered, leading to abandoned tasks and poor team alignment.",
-            "audience": "Indie developer teams, startup crews",
-            "features": "• Single-click ticket creation\n• Automatic Slack/Discord webhook updates\n• Config-free velocity and burndown grids",
-            "revenue_model": "Flat $19/mo per workspace"
-        },
-        "Founder Burnout": {
-            "name": "SoloFlow",
-            "problem": "Solo founders waste 70% of their day on tedious operational work like manual social publishing, email follow-ups, and active scraping.",
-            "audience": "Solopreneurs, side-hustlers, creators",
-            "features": "• Cross-channel marketing queue parser\n• Smart auto-responding CRM lead triggers\n• Weekly time-saved scorecard",
-            "revenue_model": "Subscription ($15/mo)"
-        },
-        "Personal Finance Automation": {
-            "name": "TextLedger",
-            "problem": "Budget tracking is too complex, leading to app abandonment when users must sync bank accounts or manually key database forms.",
-            "audience": "Young professionals, gig workers, students",
-            "features": "• Instant WhatsApp/SMS text ledger logging\n• Automatic categorical sorting via rule dictionary\n• Sunday SMS summaries",
-            "revenue_model": "Free 14-day trial, then $4/mo"
-        },
-        "Marketing & Leads Outreach": {
-            "name": "LeadPulse",
-            "problem": "Small business sales crews spend hours manually writing personalized cold outreach, warming domains, and getting blacklisted by spam filters.",
-            "audience": "Growth marketers, B2B sales teams, agency owners",
-            "features": "• Automated domain warming\n• AI email personalization sequences\n• Real-time sender blacklists monitoring",
-            "revenue_model": "SaaS ($29/mo usage-tier model)"
-        },
-        "Design Systems & UX": {
-            "name": "FigmaFlow",
-            "problem": "Design handoffs suffer from style package drift, broken CSS margins, and manual styling redos due to absolute frame outputs.",
-            "audience": "Frontend developers, UI/UX designers, digital agencies",
-            "features": "• Figma components to clean CSS classes export\n• Variable margins and grid layout linting\n• Instant auto-layout compiler",
-            "revenue_model": "Standard seat SaaS ($19/mo)"
-        },
-        "Educational Platforms": {
-            "name": "StudyBuddy AI",
-            "problem": "College students find standard Canvas/Blackboard interfaces sluggish, cluttered, and disconnected from calendar study groups.",
-            "audience": "Active students, course takers, study circles",
-            "features": "• Canvas dashboard task dates sync\n• Integrated group flashcards study lobby\n• Custom exam study plan timeline generator",
-            "revenue_model": "Freemium ($5/mo study plan generation)"
-        }
-    }
+
+    # ============================================================
+    # DYNAMIC PROBLEM EXTRACTION from actual documents
+    # ============================================================
     
-    # Match or fallback
-    idea = templates.get(topic_name)
-    if not idea:
-        # Create a dynamic custom template if query was matched in search explorer
-        idea = {
-            "name": f"{topic_name.split(' ')[0]} Antidote",
-            "problem": problem_statement,
-            "audience": "Consumers seeking a fast, lightweight dashboard solving this specific workflow friction.",
-            "features": "• Single-click automated task setup\n• Direct webhook Slack updates\n• Config-free velocity and burndown summaries",
-            "revenue_model": "Freemium ($29/month usage-based model)"
-        }
+    # Extract the top keywords from the cluster's documents
+    cluster_keywords = []
+    for doc in representative_docs[:5]:
+        cluster_keywords.extend(_extract_keywords(doc, 6))
+    kw_counts = Counter(cluster_keywords)
+    top_kws = [w for w, _ in kw_counts.most_common(8)]
+    
+    # Build a unique content hash to seed randomization per cluster
+    content_hash = hashlib.md5(combined_docs[:500].encode()).hexdigest()
+    rng = random.Random(content_hash)
+    
+    # Clean topic name
+    base_name = topic_name.replace(" Issues", "").replace(" Frustrations", "").strip()
+    if not base_name or base_name.lower() == "general":
+        base_name = top_kws[0].title() if top_kws else "Workflow"
+    
+    # ============================================================
+    # DYNAMIC NAME GENERATION using actual keywords
+    # ============================================================
+    
+    # Use the top 2 keywords to create a unique name
+    name_kw1 = top_kws[0].title() if len(top_kws) > 0 else base_name
+    name_kw2 = top_kws[1].title() if len(top_kws) > 1 else ""
+    
+    name_patterns = [
+        f"{name_kw1}Pilot",
+        f"{name_kw1}Lens",
+        f"{name_kw1}Scope",
+        f"{name_kw1}Dock",
+        f"{name_kw1}Beam",
+        f"{name_kw1}Craft",
+        f"{name_kw1}Wave",
+        f"{name_kw1}Axis",
+        f"Re{name_kw1}",
+        f"Un{name_kw1}",
+        f"{name_kw1}Stack",
+        f"{name_kw1}Kit",
+    ]
+    
+    if name_kw2:
+        name_patterns.extend([
+            f"{name_kw1}{name_kw2}",
+            f"{name_kw2}{name_kw1}",
+            f"{name_kw1}x{name_kw2}",
+        ])
+    
+    idea_name = rng.choice(name_patterns)
+    
+    # ============================================================
+    # DYNAMIC PROBLEM STATEMENT from document content
+    # ============================================================
+    
+    if not problem_statement:
+        # Extract actual pain-signal sentences from the docs
+        pain_signals = []
+        pain_words = {"frustrat", "annoying", "difficult", "struggle", "pain", "broken", 
+                      "slow", "expensive", "complicated", "bloat", "hate", "nightmare",
+                      "terrible", "waste", "clunky", "manual", "tedious", "overwhelm"}
+        
+        for doc in representative_docs[:5]:
+            sentences = re.split(r'[.!?]+', doc)
+            for sent in sentences:
+                sent = sent.strip()
+                if len(sent) > 30 and any(pw in sent.lower() for pw in pain_words):
+                    pain_signals.append(sent[:200])
+        
+        if pain_signals:
+            problem_statement = rng.choice(pain_signals)
+        else:
+            # Fallback: use the first substantial sentence from the first doc
+            for doc in representative_docs[:3]:
+                sentences = re.split(r'[.!?]+', doc)
+                for sent in sentences:
+                    sent = sent.strip()
+                    if len(sent) > 40:
+                        problem_statement = sent[:200]
+                        break
+                if problem_statement:
+                    break
+    
+    if not problem_statement:
+        problem_statement = f"Users face significant friction with {base_name.lower()}-related workflows, leading to lost productivity and frustration."
+    
+    # Ensure reasonable length
+    if len(problem_statement) > 200:
+        problem_statement = problem_statement[:197] + "..."
+    
+    # ============================================================
+    # DYNAMIC AUDIENCE from content keywords
+    # ============================================================
+    
+    audience_keywords = top_kws[2:5] if len(top_kws) > 2 else [base_name.lower()]
+    audience_context = ", ".join(audience_keywords)
+    
+    audience_templates = [
+        f"People and small teams dealing with {audience_context} challenges",
+        f"Everyday users frustrated by current {base_name.lower()} tools",
+        f"Small businesses looking for simple {audience_context} solutions",
+        f"Professionals who want an easy way to handle {base_name.lower()}",
+        f"Beginners and creators managing {audience_context}",
+    ]
+    audience = rng.choice(audience_templates)
+    
+    # ============================================================
+    # DYNAMIC FEATURES from content keywords
+    # ============================================================
+    
+    feature_kws = top_kws[:6] if top_kws else [base_name.lower()]
+    
+    feature_pool = [
+        f"• Smart {feature_kws[0]} suggestions and tips",
+        f"• One-click {base_name.lower()} setup and tracking",
+        f"• Easy-to-read {feature_kws[0]} dashboard",
+        f"• Automatic {feature_kws[min(1, len(feature_kws)-1)]} organizer",
+        f"• Shared workspace for {base_name.lower()} projects",
+        f"• Helpful reminders for {feature_kws[0]} tasks",
+        f"• Quick browser add-on to save {base_name.lower()}",
+        f"• Connects easily with your favorite {feature_kws[min(1, len(feature_kws)-1)]} apps",
+        f"• Safe and secure {base_name.lower()} storage",
+        f"• Simple drag-and-drop {feature_kws[0]} builder",
+    ]
+    
+    # Pick 3 unique features
+    selected_features = rng.sample(feature_pool, min(3, len(feature_pool)))
+    features = "\n".join(selected_features)
+    
+    # ============================================================
+    # DYNAMIC REVENUE MODEL
+    # ============================================================
+    
+    revenue_models = [
+        "Free basic plan + Pro (₹499/month)",
+        "Monthly subscription (₹299-₹999/month)",
+        "Free tier + pay as you go (₹1 per use)",
+        "Free for individuals, paid for businesses (₹1499/month)",
+        "Marketplace with a small fee (2.5% per sale)",
+        "Yearly pass (₹4999/year) with VIP support",
+    ]
+    revenue_model = rng.choice(revenue_models)
+    
+    idea = {
+        "name": idea_name,
+        "problem": problem_statement,
+        "audience": audience,
+        "features": features,
+        "revenue_model": revenue_model
+    }
         
     return idea

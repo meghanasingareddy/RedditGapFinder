@@ -31,12 +31,12 @@ function SearchExplorer() {
     setResult(null);
 
     const steps = [
-      'Scanning Reddit search indexes...',
-      'Aggregating discussion logs...',
-      'Filtering metadata and clean terms...',
-      'Calculating sentiment polarity weights...',
-      'Synthesizing customer gap opportunities...',
-      'Structuring SaaS antidote concepts...'
+      'Scanning Reddit for discussions...',
+      'Collecting user complaints and feedback...',
+      'Cleaning up the data...',
+      'Checking how people feel about this topic...',
+      'Finding gaps and business opportunities...',
+      'Building startup idea suggestions...'
     ];
 
     let currentStep = 0;
@@ -61,21 +61,21 @@ function SearchExplorer() {
       // Fallback in case backend query is empty or rate limits
       setResult({
         query: queryText,
-        summary: `Market conversations around '${queryText}' highlight strong tool bloat and setup fatigues.`,
+        summary: `Discussions around '${queryText}' show people are frustrated with too many tools and complicated setups.`,
         sentiment: "Negative",
         opportunity_score: 84,
-        primary_topic: "Tool bloat & integration fatigue",
+        primary_topic: "Too many tools & setup headaches",
         ideas: [
-          `Build a unified dashboard handling ${queryText} cleanly.`,
-          `Create a fast, automated pipeline solving workflow friction.`
+          `Build a simple all-in-one dashboard for ${queryText}.`,
+          `Create a quick, easy tool that removes the hassle from daily tasks.`
         ],
         full_idea: {
           id: 99,
-          name: `Niche ${queryText} Antidote`,
-          problem: `Current solutions in the '${queryText}' domain require too many manual configurations and high operational overhead.`,
-          audience: `Startups and solo developers looking for lightweight, efficient tools.`,
-          features: `• Single-click dashboard setup\n• Automated API mapping\n• Integrated status alerting`,
-          revenue_model: `$29/month usage-based subscription`
+          name: `Simple ${queryText} Helper`,
+          problem: `Current tools for '${queryText}' are too complicated and need too much manual work.`,
+          audience: `Small teams and individuals looking for easy, affordable tools.`,
+          features: `• One-click dashboard setup\n• Connects with your existing apps automatically\n• Get alerts when something needs attention`,
+          revenue_model: `\u20b9999/month subscription`
         }
       });
     } finally {
@@ -149,9 +149,9 @@ function SearchExplorer() {
         <div style={{ fontSize: '0.75rem', color: 'var(--primary-color)', fontWeight: 600, letterSpacing: '0.05em', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
           Search & Analyze
         </div>
-        <h1 className="editorial-headline" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>SaaS Gap Explorer</h1>
+        <h1 className="editorial-headline" style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Startup Idea Explorer</h1>
         <p style={{ color: 'var(--text-muted)', maxWidth: '540px', fontSize: '1.05rem', lineHeight: 1.5 }}>
-          Input any market keywords, software tools, or problem statements to uncover high-opportunity customer gaps.
+          Type in any topic, tool name, or problem to discover business opportunities people are asking for.
         </p>
 
         {/* Big Search Box */}
@@ -160,7 +160,7 @@ function SearchExplorer() {
             <Search size={18} color="var(--text-muted)" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
             <input 
               type="text" 
-              placeholder="e.g., solo founder struggles, Notion bloat, billing failures..."
+              placeholder="e.g., cooking struggles, fitness apps, budgeting problems..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               style={{ width: '100%', padding: '0.85rem 1rem 0.85rem 3rem', background: 'var(--panel-bg)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}
@@ -185,7 +185,7 @@ function SearchExplorer() {
             <div className="spinner" style={{ width: '48px', height: '48px', border: '4px solid var(--border-color)', borderTopColor: 'var(--primary-color)', borderRadius: '50%', animation: 'spin 1.2s linear infinite', marginBottom: '1.5rem' }}></div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem', color: 'white' }}>
               <Terminal size={16} color="var(--primary-color)" />
-              <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Analyzing Market Signals...</h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Searching and Analyzing...</h3>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontFamily: 'monospace' }}>{analysisStep}</p>
           </motion.div>
@@ -204,24 +204,24 @@ function SearchExplorer() {
             {/* Primary stats */}
             <div className="search-metrics-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1.5rem' }}>
               <div className="panel" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Analysis Scope</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>What We Searched</span>
                 <h3 style={{ fontSize: '1.25rem', color: 'white', fontWeight: 600, marginTop: '0.25rem' }}>"{result.query}"</h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem', lineHeight: 1.4 }}>{result.summary}</p>
               </div>
 
               <div className="panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Opportunity Index</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Opportunity Score</span>
                 <span style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--primary-color)' }}>{result.opportunity_score}/100</span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--success-color)', display: 'flex', alignItems: 'center', gap: '2px', marginTop: '0.25rem' }}>
-                  <Activity size={12} /> High Demand Gap
+                  <Activity size={12} /> People want this
                 </span>
               </div>
 
               <div className="panel" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Sentiment Polarities</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>How People Feel</span>
                 <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#ef4444' }}>{result.sentiment}</span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '0.25rem' }}>
-                  <ShieldAlert size={12} color="#ef4444" /> Frustrated consumers
+                  <ShieldAlert size={12} color="#ef4444" /> People are frustrated
                 </span>
               </div>
             </div>
@@ -231,7 +231,7 @@ function SearchExplorer() {
               <div className="panel" style={{ background: 'linear-gradient(135deg, rgba(23, 27, 34, 0.95), rgba(15, 17, 21, 0.95))', border: '1px solid var(--primary-color)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
                   <div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Generated Business Brief</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--primary-color)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Startup Idea</span>
                     <h3 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white', marginTop: '0.25rem' }}>{result.full_idea.name}</h3>
                   </div>
                   <button 
@@ -239,19 +239,19 @@ function SearchExplorer() {
                     className="btn-primary" 
                     style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
                   >
-                    <Bookmark size={14} /> Bookmark Concept
+                    <Bookmark size={14} /> Save This Idea
                   </button>
                 </div>
 
                 <div className="search-results-grid" style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '3rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div>
-                      <h4 style={{ fontSize: '0.8rem', color: 'white', fontWeight: 600, marginBottom: '0.25rem' }}>Problem Statement</h4>
+                      <h4 style={{ fontSize: '0.8rem', color: 'white', fontWeight: 600, marginBottom: '0.25rem' }}>The Problem</h4>
                       <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{result.full_idea.problem}</p>
                     </div>
 
                     <div>
-                      <h4 style={{ fontSize: '0.8rem', color: 'white', fontWeight: 600, marginBottom: '0.25rem' }}>Ideal Core Features</h4>
+                      <h4 style={{ fontSize: '0.8rem', color: 'white', fontWeight: 600, marginBottom: '0.25rem' }}>Key Features</h4>
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5, background: 'rgba(255,255,255,0.01)', padding: '0.5rem', borderRadius: '4px' }}>
                         {result.full_idea.features.split('\n').map((f, i) => (
                           <div key={i} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '0.1rem' }}>
@@ -265,12 +265,12 @@ function SearchExplorer() {
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '6px', background: 'rgba(255,255,255,0.02)' }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Target Audience</span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Who Is This For?</span>
                       <div style={{ fontSize: '0.8rem', color: 'white', fontWeight: 500, marginTop: '0.25rem' }}>{result.full_idea.audience}</div>
                     </div>
 
                     <div style={{ border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '6px', background: 'rgba(255,255,255,0.02)' }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Monetization Model</span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>How To Earn Money</span>
                       <div style={{ fontSize: '0.8rem', color: 'white', fontWeight: 500, marginTop: '0.25rem' }}>{result.full_idea.revenue_model}</div>
                     </div>
                   </div>

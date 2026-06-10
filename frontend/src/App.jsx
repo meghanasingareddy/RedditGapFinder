@@ -19,6 +19,7 @@ import SubredditTracker from './pages/SubredditTracker';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { TopicProvider } from './context/TopicContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { Lock, Sparkles, AlertTriangle } from 'lucide-react';
 
 // Protected Route wrapper — shows blurred preview + login prompt for unauthenticated users
@@ -477,13 +478,15 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <TopicProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </TopicProvider>
-    </AuthProvider>
+    <NotificationProvider>
+      <AuthProvider>
+        <TopicProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </TopicProvider>
+      </AuthProvider>
+    </NotificationProvider>
   );
 }
 

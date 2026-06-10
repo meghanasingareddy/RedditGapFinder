@@ -2,8 +2,8 @@ import time
 import random
 import re
 import requests
-import scraper
-import nlp
+from . import scraper
+from . import nlp
 
 # Depth configurations matching the UI
 DEPTH_CONFIGS = {
@@ -19,52 +19,111 @@ def generate_fallback_subreddits(topic: str, limit: int = 25) -> list[str]:
     serving as a robust mock or fallback when the live Reddit Search API is blocked or rate-limited.
     """
     topic_lower = topic.lower().strip()
+    cleaned_topic = re.sub(r'[^a-zA-Z0-9]', '', topic.title())
+    
+    # Always prioritize the user's actual query to ensure unique scraping per query
+    base_subreddits = [
+        cleaned_topic,
+        f"{cleaned_topic}Startups",
+        f"Learn{cleaned_topic}",
+        f"{cleaned_topic}Community"
+    ]
     
     # 1. Tech & CS & Software & AI
-    if any(k in topic_lower for k in ["cs", "dev", "code", "tech", "web", "program", "software", "ai", "ml", "chatgpt", "machine", "algorithm", "data"]):
-        subreddits = [
+    if any(k in topic_lower for k in ["cs", "dev", "code", "tech", "web", "program", "software", "ai", "ml", "chatgpt", "machine", "algorithm", "data", "javascript", "python", "react", "node", "devops"]):
+        subreddits = base_subreddits + [
             "cscareerquestions", "webdev", "programming", "technology", "ChatGPT",
             "MachineLearning", "softwareengineering", "learnprogramming", "artificial",
             "datascience", "node", "reactjs", "python", "javascript", "devops"
         ]
-    # 2. SaaS & Startups & Business & Indie & Marketing & Hustles
+    # 2. SaaS & Startups & Business & Indie & Marketing
     elif any(k in topic_lower for k in ["saas", "startup", "entrepreneur", "business", "indie", "hustle", "marketing", "sales", "solopreneur", "founder", "product", "growth"]):
-        subreddits = [
+        subreddits = base_subreddits + [
             "SideHustle", "SaaS", "startups", "Entrepreneur", "Business", "indiehackers",
             "marketing", "sales", "solopreneur", "smallbusiness", "ProductManagement",
             "GrowthHacking", "ecommerce", "workfromhome"
         ]
     # 3. Finance & Money & Investing & Crypto & Budgeting
-    elif any(k in topic_lower for k in ["finance", "money", "budget", "personal", "crypto", "bitcoin", "invest", "passive", "fire", "stock", "wealth", "saving"]):
-        subreddits = [
+    elif any(k in topic_lower for k in ["finance", "money", "budget", "crypto", "bitcoin", "invest", "passive", "fire", "stock", "wealth", "saving", "dividend", "tax"]):
+        subreddits = base_subreddits + [
             "personalfinance", "FinancialIndependence", "investing", "stocks", "CryptoCurrency",
             "passiveincome", "Budgeting", "povertyfinance", "WallStreetBets", "Finance",
             "financialplanning", "tax", "dividends", "etfs", "Bitcoin"
         ]
     # 4. Design & UI/UX & Creative
     elif any(k in topic_lower for k in ["design", "figma", "ui", "ux", "graphic", "illustration", "creative", "art", "frontend"]):
-        subreddits = [
+        subreddits = base_subreddits + [
             "UIUX", "FigmaDesign", "webdesign", "graphicdesign", "ProductDesign",
             "userexperience", "designthought", "CreativeProfessionals", "frontend", "ArtistLounge"
         ]
     # 5. Education & Studying & Career
-    elif any(k in topic_lower for k in ["education", "study", "college", "school", "student", "course", "learn", "career", "job"]):
-        subreddits = [
+    elif any(k in topic_lower for k in ["education", "study", "college", "school", "student", "course", "learn", "career", "job", "resume", "university"]):
+        subreddits = base_subreddits + [
             "education", "study", "college", "school", "students", "learning",
             "homeworkhelp", "onlinelearning", "careerguidance", "jobs", "resumes"
         ]
-    # 6. General fallback based on the topic name itself
+    # 6. Fashion & Style & Beauty
+    elif any(k in topic_lower for k in ["fashion", "style", "clothing", "outfit", "wardrobe", "streetwear", "beauty", "skincare", "makeup", "sneakers", "thrift", "vintage"]):
+        subreddits = base_subreddits + [
+            "fashion", "streetwear", "malefashionadvice", "femalefashionadvice", "sneakers",
+            "thriftstorehauls", "sewing", "FrugalFemaleFashion", "SkincareAddiction",
+            "MakeupAddiction", "beauty", "VintageFashion", "sustainablefashion"
+        ]
+    # 7. Health & Fitness & Wellness
+    elif any(k in topic_lower for k in ["health", "fitness", "gym", "workout", "nutrition", "diet", "mental", "meditation", "yoga", "running", "weight", "biohack", "sleep", "wellness"]):
+        subreddits = base_subreddits + [
+            "fitness", "loseit", "nutrition", "MealPrepSunday", "bodyweightfitness",
+            "running", "yoga", "Meditation", "mentalhealth", "Biohackers",
+            "sleep", "HealthyFood", "intermittentfasting", "keto", "PlantBasedDiet"
+        ]
+    # 8. Gaming
+    elif any(k in topic_lower for k in ["gaming", "game", "gamer", "steam", "playstation", "xbox", "nintendo", "esport", "twitch", "stream"]):
+        subreddits = base_subreddits + [
+            "gaming", "pcgaming", "IndieGaming", "GameDeals", "patientgamers",
+            "Games", "Steam", "NintendoSwitch", "PS5", "Twitch",
+            "gamedev", "truegaming", "gamingsuggestions"
+        ]
+    # 9. Food & Cooking
+    elif any(k in topic_lower for k in ["food", "cook", "recipe", "chef", "baking", "meal", "kitchen", "restaurant", "vegan", "keto"]):
+        subreddits = base_subreddits + [
+            "cooking", "recipes", "food", "MealPrepSunday", "EatCheapAndHealthy",
+            "Baking", "slowcooking", "veganrecipes", "ketorecipes", "foodhacks",
+            "AskCulinary", "Breadit", "seriouseats"
+        ]
+    # 10. Travel
+    elif any(k in topic_lower for k in ["travel", "backpack", "nomad", "flight", "hotel", "vacation", "tourism", "adventure", "hiking"]):
+        subreddits = base_subreddits + [
+            "travel", "solotravel", "backpacking", "digitalnomad", "TravelHacks",
+            "Shoestring", "roadtrip", "camping", "hiking", "AwardTravel",
+            "TravelNoPics", "flights", "TravelPartners"
+        ]
+    # 11. Relationships & Social
+    elif any(k in topic_lower for k in ["relationship", "dating", "marriage", "parenting", "family", "social", "friendship", "divorce"]):
+        subreddits = base_subreddits + [
+            "relationships", "relationship_advice", "dating_advice", "Marriage",
+            "Parenting", "datingoverthirty", "Divorce", "socialskills",
+            "MakingFriends", "LongDistance", "BreakUps"
+        ]
+    # 12. Pets & Animals
+    elif any(k in topic_lower for k in ["pet", "dog", "cat", "puppy", "kitten", "veterinary", "animal"]):
+        subreddits = base_subreddits + [
+            "dogs", "cats", "pets", "puppy101", "DogTraining",
+            "CatAdvice", "AskVet", "Dogfood", "PetAdvice",
+            "AnimalRescue", "rabbits", "Aquariums"
+        ]
+    # 13. Remote Work & Productivity & Freelance
+    elif any(k in topic_lower for k in ["remote", "productivity", "wfh", "work", "freelance", "freelancing", "timemanagement"]):
+        subreddits = base_subreddits + [
+            "remotework", "freelance", "productivity", "digitalnomad",
+            "WorkOnline", "antiwork", "overemployed", "Upwork",
+            "selfimprovement", "worklifebalance"
+        ]
+    # 14. General fallback based on the topic name itself
     else:
-        cleaned_topic = re.sub(r'[^a-zA-Z0-9]', '', topic.title())
-        subreddits = [
-            cleaned_topic,
-            f"{cleaned_topic}Startups",
-            f"Learn{cleaned_topic}",
-            f"{cleaned_topic}Community",
+        subreddits = base_subreddits + [
             f"{cleaned_topic}Pro",
             "productivity",
             "selfimprovement",
-            "remote-work",
             "digitalnomad",
             "worklifebalance"
         ]

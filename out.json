@@ -1,0 +1,102 @@
+[
+  {
+    "id": 2000,
+    "cluster_id": 1000,
+    "name": "ReStripe",
+    "problem": "Setting up Stripe billing and tax compliance is a nightmare #3 Spent the last week trying to configure SaaS sales tax rules, multi-tier subscriptions, and billing portals",
+    "audience": "Professionals who need streamlined steak workflows",
+    "features": "\u2022 Automated alerts for stripe anomalies\n\u2022 Smart billing categorization engine\n\u2022 Drag-and-drop stripe workflow builder",
+    "revenue_model": "Free tier + usage-based pricing ($0.01/query)",
+    "score": 87
+  },
+  {
+    "id": 2002,
+    "cluster_id": 1002,
+    "name": "ChickenWave",
+    "problem": "Following dietary restrictions while eating out is a constant struggle #1 As someone with celiac disease, finding safe restaurant options requires calling ahead, reading every review, and still riskin",
+    "audience": "Teams and professionals dealing with dietary, restrictions, eating challenges",
+    "features": "\u2022 One-click powder tbsp automation pipeline\n\u2022 AI-powered chicken analysis and recommendations\n\u2022 Privacy-first, offline-capable powder tbsp vault",
+    "revenue_model": "Freemium + Pro ($12/mo) + Team ($29/mo)",
+    "score": 86
+  },
+  {
+    "id": 2008,
+    "cluster_id": 1008,
+    "name": "ParentxSurvival",
+    "problem": "Not only was this expensive to order takeout every day, but it was also unhealthy",
+    "audience": "Developers and power users frustrated by kids tooling",
+    "features": "\u2022 API integrations with popular survival tools\n\u2022 Automated alerts for parent anomalies\n\u2022 Smart survival categorization engine",
+    "revenue_model": "SaaS subscription ($9-$39/mo tiered)",
+    "score": 82
+  },
+  {
+    "id": 2001,
+    "cluster_id": 1001,
+    "name": "SoloWave",
+    "problem": "Solo founder burnout is incredibly real #1 I spend 10% of my time writing code and 90% of my time manually scheduling social posts, chasing email leads, and handling cold outreach",
+    "audience": "Professionals who need streamlined cook chicken workflows",
+    "features": "\u2022 AI-powered solo analysis and recommendations\n\u2022 Drag-and-drop solo workflow builder\n\u2022 Smart founder categorization engine",
+    "revenue_model": "Annual license ($99/yr) + enterprise custom pricing",
+    "score": 81
+  },
+  {
+    "id": 2003,
+    "cluster_id": 1003,
+    "name": "ParentKit",
+    "problem": "Are you a single parent that can't find the time to cook",
+    "audience": "Early-stage startups and solopreneurs managing parent",
+    "features": "\u2022 Drag-and-drop parent workflow builder\n\u2022 AI-powered parent analysis and recommendations\n\u2022 Automated alerts for parent anomalies",
+    "revenue_model": "Free tier + usage-based pricing ($0.01/query)",
+    "score": 81
+  },
+  {
+    "id": 2004,
+    "cluster_id": 1004,
+    "name": "ReFood",
+    "problem": "Food delivery app fees are absolutely outrageous now #2 A $12 meal becomes $28 after service fees, delivery fees, small order fees, and tip",
+    "audience": "Developers and power users frustrated by delivery fees tooling",
+    "features": "\u2022 API integrations with popular delivery tools\n\u2022 AI-powered food analysis and recommendations\n\u2022 Privacy-first, offline-capable delivery fees vault",
+    "revenue_model": "SaaS subscription ($9-$39/mo tiered)",
+    "score": 81
+  },
+  {
+    "id": 2005,
+    "cluster_id": 1005,
+    "name": "QuickStack",
+    "problem": "Quick Ahi Ceviche / Poke ish thing Amazingly quick delicious and healthy snack, or even a meal",
+    "audience": "Early-stage startups and solopreneurs managing poke, amazingly, delicious",
+    "features": "\u2022 Collaborative workspace for taste teams\n\u2022 One-click taste automation pipeline\n\u2022 Drag-and-drop quick workflow builder",
+    "revenue_model": "SaaS subscription ($9-$39/mo tiered)",
+    "score": 81
+  },
+  {
+    "id": 2006,
+    "cluster_id": 1006,
+    "name": "RecipePilot",
+    "problem": "ISO Recipe recommendations with vanilla greek yogurt I have alot of vanilla flavored Greek yogurt tubs I need to use up",
+    "audience": "Small businesses and indie teams seeking better vanilla, greek, yogurt solutions",
+    "features": "\u2022 AI-powered recipe analysis and recommendations\n\u2022 Privacy-first, offline-capable wash veggies vault\n\u2022 One-click wash veggies automation pipeline",
+    "revenue_model": "Marketplace + transaction fee (2.5%)",
+    "score": 81
+  },
+  {
+    "id": 2007,
+    "cluster_id": 1007,
+    "name": "MealxPrep",
+    "problem": "Meal prep planning is exhausting and spreadsheet-heavy #3 I spend 2 hours every Sunday planning meals, calculating macros, generating grocery lists, and cross-referencing sale flyers",
+    "audience": "Early-stage startups and solopreneurs managing planning, exhausting, spreadsheet",
+    "features": "\u2022 Real-time meal monitoring dashboard\n\u2022 Collaborative workspace for chicken breast teams\n\u2022 AI-powered meal analysis and recommendations",
+    "revenue_model": "Open-core model: free self-host, paid cloud ($19/mo)",
+    "score": 76
+  },
+  {
+    "id": 2009,
+    "cluster_id": 1009,
+    "name": "SaasBeam",
+    "problem": "Is anyone else getting massive SaaS subscription fatigue",
+    "audience": "Developers and power users frustrated by medium rare tooling",
+    "features": "\u2022 Real-time saas monitoring dashboard\n\u2022 API integrations with popular subscription tools\n\u2022 Automated alerts for saas anomalies",
+    "revenue_model": "Free tier + usage-based pricing ($0.01/query)",
+    "score": 76
+  }
+]

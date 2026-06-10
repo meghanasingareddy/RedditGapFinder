@@ -5,6 +5,7 @@ import axios from 'axios';
 import { CONFIG } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { useTopic } from '../context/TopicContext';
+import { useNotifications } from '../context/NotificationContext';
 
 import Logo from './Logo';
 
@@ -18,6 +19,7 @@ function TopNavbar({ onToggleMenu, isMobile }) {
   const { activeTopicSearch, clearTopicSearch } = useTopic();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef(null);
+  const { enabled: notificationsEnabled, toggleNotifications } = useNotifications();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -361,7 +363,20 @@ REDDIT_USER_AGENT=RedditGapFinder/1.0`}
           </div>
         )}
 
-        {!isMobile && <Bell size={20} color="var(--text-muted)" className="navbar-icon" style={{ cursor: 'pointer' }} />}
+        {!isMobile && (
+          <Bell 
+            size={20} 
+            color={notificationsEnabled ? 'var(--primary-color)' : 'var(--text-muted)'} 
+            className="navbar-icon" 
+            style={{ 
+              cursor: 'pointer', 
+              transition: 'all 0.25s ease',
+              filter: notificationsEnabled ? 'drop-shadow(0 0 5px rgba(139, 124, 255, 0.45))' : 'none'
+            }} 
+            onClick={toggleNotifications}
+            title={notificationsEnabled ? 'Push Notifications Enabled (Click to Disable)' : 'Enable Push Notifications'}
+          />
+        )}
 
         {/* User section — real user data or Sign In button */}
         {user ? (

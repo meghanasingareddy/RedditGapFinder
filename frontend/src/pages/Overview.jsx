@@ -7,6 +7,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { ArrowUpRight, Search, Activity, Sparkles, AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTopic } from '../context/TopicContext';
+import { useNotifications } from '../context/NotificationContext';
 import TopicSearch from '../components/TopicSearch';
 
 function Overview() {
@@ -31,6 +32,7 @@ function Overview() {
   const [scanInput, setScanInput] = useState('');
   const [scanModal, setScanModal] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const { sendNotification } = useNotifications();
 
   const {
     activeTopicId,

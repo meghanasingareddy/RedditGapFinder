@@ -7,11 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional
 from pydantic import BaseModel
 
-import models, schemas
-import scraper
-import nlp
-import topic_search
-from database import engine, get_db, SessionLocal, seed_database
+from . import models, schemas
+from . import scraper, nlp, topic_search
+from .database import engine, get_db, SessionLocal, seed_database
 
 # Topic search caching: {(topic, depth): {"timestamp": float, "payload": dict}}
 topic_search_cache = {}
@@ -406,8 +404,10 @@ def scan_reddit(
 @app.post("/api/analyze")
 def analyze_query(query: str = Query(..., description="Query to analyze, e.g., 'SaaS struggles'")):
     # Instant query analysis (Search Explorer endpoint)
-    # 1. Generate text corpus contextually based on query
-    posts = scraper.generate_contextual_posts(query, limit=5)
+    # 1. Try to get real posts first, fall back to contextual mock
+    posts = scraper.scrape_subreddit(query, limit=5)
+    if not posts:
+        posts = scraper.generate_contextual_posts(query, limit=5)
     corpus = [p["title"] + " " + (p["selftext"] or "") for p in posts]
     
     # 2. Extract sentiment
@@ -455,19 +455,19 @@ def post_search_topic(request: TopicSearchRequest):
     cache_key = (topic_clean, depth_clean)
     now = time.time()
     
-    # 1. Cache lookup (24 hours = 86400 seconds)
+    # 1. Cache lookup (10 minutes = 600 seconds)
     if cache_key in topic_search_cache:
         cached_entry = topic_search_cache[cache_key]
-        if now - cached_entry["timestamp"] < 86400:
+        if now - cached_entry["timestamp"] < 600:
             print(f"[CACHE HIT] Returning cached analysis for '{request.topic}' ({depth_clean})")
             return cached_entry["payload"]
             
-    # 2. Rate Limiting (60 seconds cooldown per topic)
+    # 2. Rate Limiting (15 seconds cooldown per topic)
     if topic_clean in topic_rate_limit:
         last_request_time = topic_rate_limit[topic_clean]
         elapsed = now - last_request_time
-        if elapsed < 60:
-            remaining = int(60 - elapsed)
+        if elapsed < 15:
+            remaining = int(15 - elapsed)
             raise HTTPException(
                 status_code=429,
                 detail=f"Rate limit active for '{request.topic}'. Please wait {remaining} seconds before analyzing this topic again."
