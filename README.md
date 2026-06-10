@@ -1,38 +1,63 @@
-# RedditGapFinder - Discover Startup Ideas from Reddit Conversations
+<h2 align="center">
+  <code>RedditGapFinder</code>
+</h2>
 
 <p align="center">
   <img src="frontend/src/assets/logo.svg" alt="RedditGapFinder Logo" width="120" />
 </p>
 
-> Discover startup opportunities by analyzing real Reddit conversations. Search any topic, find pain points, and get AI-generated startup ideas.
+<p align="center">
+  <strong>Find real problems people want solved.</strong>
+</p>
 
-**Live Application:** [https://frontend-xi-taupe-49.vercel.app](https://frontend-xi-taupe-49.vercel.app)
+<p align="center">
+  <a href="https://frontend-xi-taupe-49.vercel.app"><img src="https://img.shields.io/badge/Live_Demo-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live Demo"></a>
+  <a href="https://github.com/meghanasingareddy/RedditGapFinder"><img src="https://img.shields.io/github/stars/meghanasingareddy/RedditGapFinder?style=for-the-badge&logo=github&color=181717" alt="GitHub Stars"></a>
+</p>
+
+---
 
 RedditGapFinder is an AI-powered, full-stack market-research and SaaS discovery platform. It scans Reddit discussions in real-time to locate unmet needs, product gaps, and lucrative business opportunities. By parsing user frustrations and clustering recurring complaints, it acts as a crystal ball for your next startup idea.
 
-**GitHub Topics:** `reddit`, `startup-ideas`, `nlp`, `market-research`, `opportunity-finder`, `saas`, `entrepreneur`, `business-intelligence`, `sentiment-analysis`, `market-gaps`, `product-validation`, `startup-tools`, `reddit-scraper`, `fastapi`, `react`
-
----
-
 ## Features
 
-- **Topic Search (Any Topic):** Query ANY topic, niche, or custom query (e.g., "sustainable fashion", "web3 gaming") to discover relevant subreddits and analyze real-time discussions.
-- **4 Analysis Depths:** Tailor your market scanning from lightweight lookups to thorough intelligence gathering:
-  - **Quick Insight:** Fast scan (4 subreddits, 3 posts each)
-  - **Standard Analysis:** Balanced lookup (8 subreddits, 8 posts each)
-  - **Deep Research:** Detailed crawl (15 subreddits, 8 posts each)
-  - **Market Intelligence:** Comprehensive intelligence (20 subreddits, 8 posts each)
-- **Credential-Free RSS Scraping:** Scrapes and processes subreddit discussions using clean, asynchronous XML RSS/Atom feed parser pipelines—**no official Reddit Developer API keys or PRAW accounts required!**
-- **My Analyses (Persistent History):** Save and manage up to 50 topic analyses locally in the browser. Features include:
-  - Instant toggle / switching between past analyses
-  - Relative timestamps ("2 hours ago") and depth badges next to each item
-  - In-sidebar renaming, exporting analysis payloads as JSON, and deleting items
-- **AI Pain Point Cards:** Discover organized frustration cards showing user complaints, trend directions, and calculated Opportunity Scores.
-- **AI Startup Idea Generator:** Transforms recurring customer complaints into actionable startup blueprints containing revenue models and MVP features.
-- **Trend Visualization Dashboard:** Live interactive charts tracking category complaint volume against calculated opportunities.
-- **Search Explorer:** Query compiled datasets with natural language to find specific market gaps (e.g., "What do developers complain about the most?").
+**Topic Search (Any Topic)**
+Query ANY topic, niche, or custom query (e.g., "sustainable fashion", "web3 gaming") to discover relevant subreddits and analyze real-time discussions.
 
----
+**4 Analysis Depths**
+Tailor your market scanning from lightweight lookups to thorough intelligence gathering:
+- Quick Insight: Fast scan (4 subreddits, 3 posts each)
+- Standard Analysis: Balanced lookup (8 subreddits, 8 posts each)
+- Deep Research: Detailed crawl (15 subreddits, 8 posts each)
+- Market Intelligence: Comprehensive intelligence (20 subreddits, 8 posts each)
+
+**Credential-Free RSS Scraping**
+Scrapes and processes subreddit discussions using clean, asynchronous XML RSS/Atom feed parser pipelines — no official Reddit Developer API keys or PRAW accounts required.
+
+**My Analyses (Persistent History)**
+Save and manage up to 50 topic analyses locally in the browser. Features include:
+- Instant toggle / switching between past analyses
+- Relative timestamps ("2 hours ago") and depth badges
+- In-sidebar renaming, exporting as JSON, and deleting items
+
+**AI Pain Point Cards**
+Discover organized frustration cards showing user complaints, trend directions, and calculated Opportunity Scores.
+
+**AI Startup Idea Generator**
+Transforms recurring customer complaints into actionable startup blueprints containing revenue models and MVP features.
+
+**Trend Visualization Dashboard**
+Live interactive charts tracking category complaint volume against calculated opportunities.
+
+**Search Explorer**
+Query compiled datasets with natural language to find specific market gaps (e.g., "What do developers complain about the most?").
+
+## Built With
+
+- **Frontend:** React, Vite, Tailwind CSS
+- **Backend:** FastAPI (Python)
+- **NLP:** SentenceTransformers, BERTopic, VADER
+- **Deployment:** Vercel (frontend) + Render (backend)
 
 ## Project Structure
 
