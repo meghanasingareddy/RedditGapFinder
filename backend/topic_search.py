@@ -2,8 +2,8 @@ import time
 import random
 import re
 import requests
-from . import scraper
-from . import nlp
+import scraper
+import nlp
 
 # Depth configurations matching the UI
 DEPTH_CONFIGS = {

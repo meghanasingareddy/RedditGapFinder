@@ -7,25 +7,25 @@ from collections import Counter
 try:
     from sentence_transformers import SentenceTransformer
     HAS_SENTENCE_TRANSFORMERS = True
-except ImportError:
+except Exception:
     HAS_SENTENCE_TRANSFORMERS = False
 
 try:
     from bertopic import BERTopic
     HAS_BERTOPIC = True
-except ImportError:
+except Exception:
     HAS_BERTOPIC = False
 
 try:
     from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
     HAS_VADER = True
-except ImportError:
+except Exception:
     HAS_VADER = False
 
 try:
     from transformers import pipeline
     HAS_TRANSFORMERS = True
-except ImportError:
+except Exception:
     HAS_TRANSFORMERS = False
 
 # Lazy-loaded models
