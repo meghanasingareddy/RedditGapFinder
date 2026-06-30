@@ -18,3 +18,7 @@ services:
         value: sqlite:///./redditgapfinder.db
       - key: PYTHON_VERSION
         value: "3.11.9"
+      - key: REDDIT_CLIENT_ID
+        sync: false
+      - key: REDDIT_CLIENT_SECRET
+        sync: false

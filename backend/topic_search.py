@@ -139,51 +139,19 @@ def generate_fallback_subreddits(topic: str, limit: int = 25) -> list[str]:
 
 def search_reddit_subreddits(topic: str, limit: int = 25) -> list[str]:
     """
-    Search for subreddits related to a specific topic using Reddit's public JSON API.
-    Tries multiple endpoints. Falls back to curated list on failure.
+    Search for subreddits matching a topic.
+    Uses OAuth2-aware request pipeline from scraper (works from any IP/region).
+    Falls back to curated topic-specific list if API fails.
     """
     if scraper.is_using_mock_fallback():
         print(f"[TOPIC SEARCH] Mock fallback ACTIVE for '{topic}'.")
         return generate_fallback_subreddits(topic, limit)
 
-    import urllib.parse
-    encoded = urllib.parse.quote(topic)
-    headers = {"User-Agent": scraper.USER_AGENT}
+    subs = scraper.search_subreddits_api(topic, limit=limit)
+    if subs:
+        return subs
 
-    # Try Reddit subreddit search endpoints
-    endpoints = [
-        f"https://www.reddit.com/subreddits/search.json?q={encoded}&limit={limit}&raw_json=1",
-        f"https://www.reddit.com/api/subreddits/search.json?q={encoded}&limit={limit}&raw_json=1",
-    ]
-
-    for url in endpoints:
-        print(f"[TOPIC SEARCH] Searching: {url}")
-        try:
-            resp = requests.get(url, headers=headers, timeout=15)
-            if resp.status_code == 200:
-                data = resp.json()
-                children = data.get("data", {}).get("children", [])
-                subreddits = []
-                for child in children:
-                    sub_data = child.get("data", {})
-                    if sub_data.get("over18"):
-                        continue
-                    name = sub_data.get("display_name")
-                    if name and name not in subreddits:
-                        subreddits.append(name)
-                if subreddits:
-                    print(f"[TOPIC SEARCH] Found {len(subreddits)} subreddits for '{topic}'.")
-                    return subreddits[:limit]
-                print(f"[TOPIC SEARCH] Empty results from {url}")
-            elif resp.status_code == 429:
-                print(f"[TOPIC SEARCH] Rate-limited (429), trying next endpoint")
-                time.sleep(1)
-            else:
-                print(f"[TOPIC SEARCH] HTTP {resp.status_code} from {url}")
-        except Exception as e:
-            print(f"[TOPIC SEARCH] Error: {e}")
-
-    print(f"[TOPIC SEARCH] All endpoints failed for '{topic}'. Using curated fallback.")
+    print(f"[TOPIC SEARCH] API search failed for '{topic}'. Using curated fallback.")
     return generate_fallback_subreddits(topic, limit)
 
 
