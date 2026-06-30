@@ -125,10 +125,16 @@ def clean_html(raw: str) -> str:
 def _clean_selftext(raw: str) -> str:
     if not raw or raw in ("[deleted]", "[removed]"):
         return ""
-    text = re.sub(r"\s*submitted by\s*/u/\S+", "", raw)
-    text = re.sub(r"\[link\]\s*\[comments\]", "", text)
-    text = re.sub(r"https?://\S+", "", text)
-    text = re.sub(r"\s+", " ", text).strip()
+    text = raw
+    # Remove all common Reddit submission boilerplate
+    text = re.sub(r'submitted by\s+/u/\S+', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\[link\]', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\[comments\]', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\[score hidden\]', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\[deleted\]', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\[removed\]', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'https?://\S+', '', text)  # strip bare URLs
+    text = re.sub(r'\s+', ' ', text).strip()
     return text
 
 def _parse_children(children: list, now: float) -> list[dict]:

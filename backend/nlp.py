@@ -160,6 +160,10 @@ STOP_WORDS = {
     "completely", "literally", "entire", "actually", "basically", "essentially",
     "massive", "huge", "small", "little", "large", "simple", "real",
     "literally", "honestly", "entire", "single", "every", "another",
+    # Reddit boilerplate words — must never become cluster names
+    "link", "links", "comment", "comments", "submit", "submitted", "score",
+    "hidden", "deleted", "removed", "reddit", "subreddit", "post", "posts",
+    "upvote", "downvote", "vote", "cross", "crosspost", "moderator", "mod",
 }
 
 
