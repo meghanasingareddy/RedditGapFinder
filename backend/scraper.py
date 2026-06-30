@@ -137,6 +137,16 @@ def _clean_selftext(raw: str) -> str:
     text = re.sub(r'\s+', ' ', text).strip()
     return text
 
+# Patterns for recurring weekly megathreads — not useful for market analysis
+_MEGATHREAD_PATTERNS = re.compile(
+    r'\b(moronic monday|weekly thread|victory sunday|simple questions|'
+    r'newbie tuesday|weekly discussion|rant wednesday|daily thread|'
+    r'weekly check.?in|progress pics|weekly wins|weekly advice|'
+    r'click here first|read before posting|wiki|faq|rules|mod post|'
+    r'announcement|pinned|megathread|daily question)\b',
+    re.IGNORECASE
+)
+
 def _parse_children(children: list, now: float) -> list[dict]:
     posts = []
     seen_ids: set[str] = set()
@@ -151,7 +161,15 @@ def _parse_children(children: list, now: float) -> list[dict]:
         title = d.get("title", "").strip()
         if not title:
             continue
+        # Skip weekly megathreads — they have no actionable content
+        if _MEGATHREAD_PATTERNS.search(title):
+            print(f"[FILTER] Skipping megathread: {title[:60]}")
+            continue
         selftext = _clean_selftext(d.get("selftext") or "")
+        combined = title + " " + selftext
+        # Skip posts with almost no content
+        if len(combined.strip()) < 15:
+            continue
         posts.append({
             "id": post_id,
             "title": title,
@@ -185,8 +203,8 @@ def fetch_reddit_json(subreddit_name: str, limit: int = 25) -> list[dict]:
             return entry["posts"][:limit]
 
     sort_urls = [
+        f"https://www.reddit.com/r/{clean_sub}/top.json?limit=25&t=month&raw_json=1",
         f"https://www.reddit.com/r/{clean_sub}/hot.json?limit=25&raw_json=1",
-        f"https://www.reddit.com/r/{clean_sub}/top.json?limit=25&t=week&raw_json=1",
         f"https://www.reddit.com/r/{clean_sub}/new.json?limit=25&raw_json=1",
     ]
 
