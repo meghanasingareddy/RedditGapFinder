@@ -85,6 +85,17 @@ def get_api_status():
         "reddit_client_configured": True
     }
 
+@app.get("/api/debug/ai")
+def debug_ai():
+    import ai_analyzer
+    import os
+    return {
+        "is_ai_available": ai_analyzer.is_ai_available(),
+        "env_key_set": bool(os.getenv("GEMINI_API_KEY")),
+        "key_length": len(os.getenv("GEMINI_API_KEY", "")),
+        "model_loaded": ai_analyzer._get_model() is not None,
+    }
+
 @app.get("/api/stats")
 def get_dashboard_stats(db: Session = Depends(get_db)):
     total_posts = db.query(models.Post).count()
