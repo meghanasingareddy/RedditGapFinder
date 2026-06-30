@@ -4,6 +4,7 @@ import re
 import requests
 import scraper
 import nlp
+import ai_analyzer
 
 # Depth configurations matching the UI
 DEPTH_CONFIGS = {
@@ -140,18 +141,26 @@ def generate_fallback_subreddits(topic: str, limit: int = 25) -> list[str]:
 def search_reddit_subreddits(topic: str, limit: int = 25) -> list[str]:
     """
     Search for subreddits matching a topic.
-    Uses OAuth2-aware request pipeline from scraper (works from any IP/region).
-    Falls back to curated topic-specific list if API fails.
+    Priority: Reddit API → Gemini AI discovery → curated fallback.
     """
     if scraper.is_using_mock_fallback():
         print(f"[TOPIC SEARCH] Mock fallback ACTIVE for '{topic}'.")
         return generate_fallback_subreddits(topic, limit)
 
+    # 1. Try Reddit's own search API
     subs = scraper.search_subreddits_api(topic, limit=limit)
     if subs:
         return subs
 
-    print(f"[TOPIC SEARCH] API search failed for '{topic}'. Using curated fallback.")
+    # 2. Use Gemini AI to intelligently discover relevant subreddits
+    if ai_analyzer.is_ai_available():
+        print(f"[TOPIC SEARCH] Using Gemini AI to discover subreddits for '{topic}'")
+        ai_subs = ai_analyzer.discover_subreddits(topic, limit=limit)
+        if ai_subs:
+            return ai_subs
+
+    # 3. Fall back to curated keyword-based list
+    print(f"[TOPIC SEARCH] Using curated fallback for '{topic}'.")
     return generate_fallback_subreddits(topic, limit)
 
 
@@ -324,7 +333,7 @@ def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=No
             "score": opp_score
         })
         
-        # Generate startup ideas
+        # Generate startup ideas (NLP template as placeholder, AI will enhance below)
         idea_template = nlp.generate_idea_from_cluster(topic_name, topic_docs)
         ideas.append({
             "id": topic_idx + 2000,
@@ -336,10 +345,32 @@ def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=No
             "revenue_model": idea_template["revenue_model"],
             "score": opp_score
         })
-        
+
     # Sort clusters and ideas by opportunity score descending
     clusters.sort(key=lambda x: x["opportunity_score"], reverse=True)
     ideas.sort(key=lambda x: x["score"], reverse=True)
+
+    # 5. AI-powered idea enhancement — replace NLP template ideas with real Gemini analysis
+    if ai_analyzer.is_ai_available() and corpus_posts:
+        print(f"[AI] Generating enhanced startup ideas for '{topic}'...")
+        ai_ideas = ai_analyzer.generate_startup_ideas(topic, corpus_posts, num_ideas=max(3, len(clusters)))
+        if ai_ideas:
+            # Merge AI ideas with existing cluster IDs and scores
+            ideas = []
+            for i, ai_idea in enumerate(ai_ideas):
+                cluster_id = clusters[i]["id"] if i < len(clusters) else 2000 + i
+                score = clusters[i]["opportunity_score"] if i < len(clusters) else 75
+                ideas.append({
+                    "id": 2000 + i,
+                    "cluster_id": cluster_id,
+                    "name": ai_idea.get("name", f"Idea {i+1}"),
+                    "problem": ai_idea.get("problem", ""),
+                    "audience": ai_idea.get("audience", ""),
+                    "features": ai_idea.get("features", ""),
+                    "revenue_model": ai_idea.get("revenue_model", ""),
+                    "score": int(ai_idea.get("score", score))
+                })
+            print(f"[AI] Enhanced {len(ideas)} ideas with Gemini analysis")
     
     # Calculate aggregate stats
     total_posts = len(corpus_posts)

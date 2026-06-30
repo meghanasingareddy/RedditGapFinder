@@ -22,3 +22,5 @@ services:
         sync: false
       - key: REDDIT_CLIENT_SECRET
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false

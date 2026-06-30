@@ -8,3 +8,4 @@ vaderSentiment
 sentence-transformers
 bertopic
 aiohttp
+google-generativeai
