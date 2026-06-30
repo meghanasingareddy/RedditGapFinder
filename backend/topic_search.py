@@ -139,48 +139,53 @@ def generate_fallback_subreddits(topic: str, limit: int = 25) -> list[str]:
 
 def search_reddit_subreddits(topic: str, limit: int = 25) -> list[str]:
     """
-    Search for subreddits related to a specific topic using Reddit's public API.
-    Bypasses authentication. Falls back gracefully to curated communities on failure or rate-limits.
+    Search for subreddits related to a specific topic using Reddit's public JSON API.
+    Tries multiple endpoints. Falls back to curated list on failure.
     """
-    # If mock fallback mode is active, skip the network request entirely
     if scraper.is_using_mock_fallback():
-        print(f"[TOPIC SEARCH] Mock fallback mode is ACTIVE. Generating simulated subreddits for '{topic}'.")
+        print(f"[TOPIC SEARCH] Mock fallback ACTIVE for '{topic}'.")
         return generate_fallback_subreddits(topic, limit)
 
     import urllib.parse
-    encoded_topic = urllib.parse.quote(topic)
-    url = f"https://www.reddit.com/api/subreddits/search.json?q={encoded_topic}&limit={limit}"
-    print(f"[TOPIC SEARCH] Searching subreddits for '{topic}': {url}")
-    
-    try:
-        headers = {"User-Agent": scraper.USER_AGENT}
-        response = requests.get(url, headers=headers, timeout=10)
-        
-        if response.status_code == 200:
-            data = response.json()
-            children = data.get("data", {}).get("children", [])
-            subreddits = []
-            
-            for child in children:
-                sub_data = child.get("data", {})
-                # Filter out NSFW subreddits to remain safe
-                if sub_data.get("over18"):
-                    continue
-                display_name = sub_data.get("display_name")
-                if display_name:
-                    subreddits.append(display_name)
-                    
-            if subreddits:
-                print(f"[TOPIC SEARCH] Found {len(subreddits)} subreddits for topic '{topic}'.")
-                return subreddits
+    encoded = urllib.parse.quote(topic)
+    headers = {"User-Agent": scraper.USER_AGENT}
+
+    # Try Reddit subreddit search endpoints
+    endpoints = [
+        f"https://www.reddit.com/subreddits/search.json?q={encoded}&limit={limit}&raw_json=1",
+        f"https://www.reddit.com/api/subreddits/search.json?q={encoded}&limit={limit}&raw_json=1",
+    ]
+
+    for url in endpoints:
+        print(f"[TOPIC SEARCH] Searching: {url}")
+        try:
+            resp = requests.get(url, headers=headers, timeout=15)
+            if resp.status_code == 200:
+                data = resp.json()
+                children = data.get("data", {}).get("children", [])
+                subreddits = []
+                for child in children:
+                    sub_data = child.get("data", {})
+                    if sub_data.get("over18"):
+                        continue
+                    name = sub_data.get("display_name")
+                    if name and name not in subreddits:
+                        subreddits.append(name)
+                if subreddits:
+                    print(f"[TOPIC SEARCH] Found {len(subreddits)} subreddits for '{topic}'.")
+                    return subreddits[:limit]
+                print(f"[TOPIC SEARCH] Empty results from {url}")
+            elif resp.status_code == 429:
+                print(f"[TOPIC SEARCH] Rate-limited (429), trying next endpoint")
+                time.sleep(1)
             else:
-                print(f"[TOPIC SEARCH] Reddit search API returned empty result for '{topic}'. Using smart fallback.")
-        else:
-            print(f"[TOPIC SEARCH] Reddit search API returned status {response.status_code}. Using smart fallback.")
-    except Exception as e:
-        print(f"[TOPIC SEARCH] Error searching subreddits: {e}. Using smart fallback.")
-        
+                print(f"[TOPIC SEARCH] HTTP {resp.status_code} from {url}")
+        except Exception as e:
+            print(f"[TOPIC SEARCH] Error: {e}")
+
+    print(f"[TOPIC SEARCH] All endpoints failed for '{topic}'. Using curated fallback.")
     return generate_fallback_subreddits(topic, limit)
+
 
 def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=None) -> dict:
     """

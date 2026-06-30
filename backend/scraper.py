@@ -1,8 +1,13 @@
 import os
 import time
 import random
+import re
+import html
+import json
+import requests
 
-def load_env_file():
+# ─── Load .env (dev only) ────────────────────────────────────────────────────
+def _load_env_file():
     for path in [".env", "../.env", "backend/.env"]:
         if os.path.exists(path):
             try:
@@ -11,292 +16,266 @@ def load_env_file():
                         line = line.strip()
                         if line and not line.startswith("#") and "=" in line:
                             k, v = line.split("=", 1)
-                            os.environ[k.strip()] = v.strip().strip('"').strip("'")
-            except Exception as e:
-                print(f"Error loading .env file from {path}: {e}")
+                            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+            except Exception:
+                pass
 
-load_env_file()
+_load_env_file()
 
-import requests
-import xml.etree.ElementTree as ET
-import html
-import re
-import json
-
-USER_AGENT = os.getenv("USER_AGENT", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-FORCE_MOCK_DATA = os.getenv("FORCE_MOCK_DATA", "").lower() in ("true", "1", "yes")
+# ─── Config ───────────────────────────────────────────────────────────────────
+USER_AGENT = os.getenv(
+    "USER_AGENT",
+    "RedditGapFinder/2.0 (market research tool; contact via GitHub)"
+)
+FORCE_MOCK_DATA = os.getenv("FORCE_MOCK_DATA", "false").lower() in ("true", "1", "yes")
 
 def is_using_mock_fallback() -> bool:
-    if os.getenv("FORCE_MOCK_DATA", "").lower() in ("true", "1", "yes"):
-        return True
-    return False
+    return FORCE_MOCK_DATA
 
-def clean_html(raw_html: str) -> str:
-    if not raw_html:
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+def clean_html(raw: str) -> str:
+    if not raw:
         return ""
-    cleanr = re.compile('<.*?>')
-    cleantext = re.sub(cleanr, '', raw_html)
-    return html.unescape(cleantext).strip()
+    raw = re.sub(r"<[^>]+>", " ", raw)
+    return html.unescape(raw).strip()
 
-def parse_rss_or_atom(xml_content: bytes, limit: int = 100):
+# ─── In-memory cache (TTL: 2 minutes) ────────────────────────────────────────
+_rss_cache: dict = {}
+_CACHE_TTL = 120  # seconds
+
+# ─── Reddit JSON API (primary, works from servers) ────────────────────────────
+def fetch_reddit_json(subreddit_name: str, limit: int = 25, sort: str = "hot") -> list[dict]:
+    """
+    Fetch posts via Reddit's public JSON API (/r/sub.json).
+    Works reliably from cloud servers unlike RSS which gets blocked.
+    """
+    clean_sub = subreddit_name.replace("r/", "").strip("/").strip()
+    cache_key = f"json:{clean_sub}:{sort}"
+    now = time.time()
+
+    if cache_key in _rss_cache:
+        entry = _rss_cache[cache_key]
+        if now - entry["ts"] < _CACHE_TTL:
+            print(f"[CACHE HIT] {clean_sub}")
+            return entry["posts"][:limit]
+
+    urls = [
+        f"https://www.reddit.com/r/{clean_sub}/{sort}.json?limit={limit}&raw_json=1",
+        f"https://www.reddit.com/r/{clean_sub}.json?limit={limit}&raw_json=1",
+    ]
+    headers = {"User-Agent": USER_AGENT}
+
+    for url in urls:
+        print(f"[JSON API] Fetching: {url}")
+        try:
+            resp = requests.get(url, headers=headers, timeout=20)
+            if resp.status_code == 200:
+                data = resp.json()
+                children = data.get("data", {}).get("children", [])
+                posts = []
+                for child in children:
+                    d = child.get("data", {})
+                    if d.get("stickied"):
+                        continue  # skip pinned mod posts
+                    title = d.get("title", "").strip()
+                    if not title:
+                        continue
+                    selftext = (d.get("selftext") or "").strip()
+                    if selftext in ("[deleted]", "[removed]"):
+                        selftext = ""
+                    posts.append({
+                        "id": d.get("id", f"rj_{int(now)}_{len(posts)}"),
+                        "title": title,
+                        "selftext": selftext[:2000],
+                        "url": d.get("url", f"https://reddit.com{d.get('permalink','')}"),
+                        "score": d.get("score", 0),
+                        "created_utc": d.get("created_utc", now),
+                        "num_comments": d.get("num_comments", 0),
+                        "subreddit": d.get("subreddit", clean_sub),
+                    })
+                if posts:
+                    print(f"[JSON API] OK — {len(posts)} posts from r/{clean_sub}")
+                    _rss_cache[cache_key] = {"ts": now, "posts": posts}
+                    return posts[:limit]
+                else:
+                    print(f"[JSON API] No posts from r/{clean_sub} (status 200 but empty)")
+            elif resp.status_code == 429:
+                print(f"[JSON API] Rate-limited (429) for r/{clean_sub}")
+                time.sleep(2)
+            elif resp.status_code == 404:
+                print(f"[JSON API] Subreddit r/{clean_sub} not found (404)")
+                return []
+            else:
+                print(f"[JSON API] HTTP {resp.status_code} for r/{clean_sub}")
+        except requests.exceptions.Timeout:
+            print(f"[JSON API] Timeout fetching r/{clean_sub}")
+        except Exception as e:
+            print(f"[JSON API] Exception: {e}")
+
+    return []
+
+# ─── RSS fallback (secondary) ─────────────────────────────────────────────────
+def _parse_rss(xml_bytes: bytes, limit: int) -> list[dict]:
+    import xml.etree.ElementTree as ET
     posts = []
     try:
-        root = ET.fromstring(xml_content)
+        root = ET.fromstring(xml_bytes)
         tag = root.tag.lower()
-        
-        if 'feed' in tag:
-            ns = {'atom': 'http://www.w3.org/2005/Atom'}
-            entries = root.findall('atom:entry', ns)
-            if not entries:
-                entries = root.findall('entry')
-                
-            for i, entry in enumerate(entries[:limit]):
-                title_elem = entry.find('atom:title', ns)
-                if title_elem is None:
-                    title_elem = entry.find('title')
-                title = title_elem.text if title_elem is not None else "Untitled Post"
-                
-                id_elem = entry.find('atom:id', ns)
-                if id_elem is None:
-                    id_elem = entry.find('id')
-                raw_id = id_elem.text if id_elem is not None else f"atom_{int(time.time())}_{i}"
-                post_id = _extract_reddit_id(raw_id) or f"rss_{i}_{int(time.time())}"
-                
-                link_elem = entry.find('atom:link', ns)
-                if link_elem is None:
-                    link_elem = entry.find('link')
-                if link_elem is not None:
-                    post_url = link_elem.attrib.get('href', '') if 'href' in link_elem.attrib else (link_elem.text or '')
-                else:
-                    post_url = "https://reddit.com"
-                
-                content_elem = entry.find('atom:content', ns)
-                if content_elem is None:
-                    content_elem = entry.find('content')
-                if content_elem is None:
-                    content_elem = entry.find('atom:summary', ns)
-                if content_elem is None:
-                    content_elem = entry.find('summary')
-                raw_content = content_elem.text if content_elem is not None else ""
-                selftext = clean_html(raw_content)[:2000]
-                
-                updated_elem = entry.find('atom:updated', ns)
-                if updated_elem is None:
-                    updated_elem = entry.find('updated')
-                created_utc = time.time()
-                if updated_elem is not None and updated_elem.text:
-                    try:
-                        from datetime import datetime
-                        dt = datetime.fromisoformat(updated_elem.text.replace('Z', '+00:00'))
-                        created_utc = dt.timestamp()
-                    except Exception:
-                        pass
-                
-                posts.append({
-                    "id": post_id,
-                    "title": title,
-                    "selftext": selftext,
-                    "url": post_url,
-                    "score": random.randint(50, 450),
-                    "created_utc": created_utc
-                })
-        else:
-            channel = root.find('channel')
-            items = channel.findall('item') if channel is not None else root.findall('.//item')
-            
+        now = time.time()
+
+        if "feed" in tag:  # Atom
+            ns = {"a": "http://www.w3.org/2005/Atom"}
+            entries = root.findall("a:entry", ns) or root.findall("entry")
+            for i, e in enumerate(entries[:limit]):
+                t = (e.find("a:title", ns) or e.find("title"))
+                title = t.text if t is not None else "Untitled"
+                raw_id_el = (e.find("a:id", ns) or e.find("id"))
+                raw_id = raw_id_el.text if raw_id_el is not None else ""
+                m = re.search(r"/comments/([a-z0-9]+)", raw_id or "", re.I)
+                post_id = m.group(1) if m else f"rss_{i}_{int(now)}"
+                link_el = (e.find("a:link", ns) or e.find("link"))
+                url = (link_el.attrib.get("href", "") if link_el is not None and "href" in link_el.attrib
+                       else (link_el.text or "https://reddit.com") if link_el is not None else "https://reddit.com")
+                body_el = (e.find("a:content", ns) or e.find("content") or
+                           e.find("a:summary", ns) or e.find("summary"))
+                selftext = clean_html(body_el.text if body_el is not None else "")[:2000]
+                posts.append({"id": post_id, "title": title, "selftext": selftext,
+                              "url": url, "score": random.randint(50, 400), "created_utc": now})
+        else:  # RSS 2.0
+            channel = root.find("channel")
+            items = channel.findall("item") if channel is not None else root.findall(".//item")
             for i, item in enumerate(items[:limit]):
-                title_elem = item.find('title')
-                title = title_elem.text if title_elem is not None else "Untitled Post"
-                
-                guid_elem = item.find('guid')
-                if guid_elem is None:
-                    guid_elem = item.find('id')
-                raw_id = guid_elem.text if guid_elem is not None else f"rss_{int(time.time())}_{i}"
-                post_id = _extract_reddit_id(raw_id) or raw_id.split('/')[-1]
-                
-                link_elem = item.find('link')
-                post_url = link_elem.text if link_elem is not None else "https://reddit.com"
-                
-                desc_elem = item.find('description')
-                if desc_elem is None:
-                    desc_elem = item.find('content')
-                raw_content = desc_elem.text if desc_elem is not None else ""
-                selftext = clean_html(raw_content)[:2000]
-                
-                pub_elem = item.find('pubDate')
-                created_utc = time.time()
-                if pub_elem is not None and pub_elem.text:
-                    try:
-                        import email.utils
-                        created_utc = email.utils.parsedate_to_datetime(pub_elem.text).timestamp()
-                    except Exception:
-                        pass
-                        
-                posts.append({
-                    "id": post_id,
-                    "title": title,
-                    "selftext": selftext,
-                    "url": post_url,
-                    "score": random.randint(50, 450),
-                    "created_utc": created_utc
-                })
+                t = item.find("title")
+                title = t.text if t is not None else "Untitled"
+                guid = item.find("guid")
+                raw_id = guid.text if guid is not None else ""
+                m = re.search(r"/comments/([a-z0-9]+)", raw_id or "", re.I)
+                post_id = m.group(1) if m else (raw_id.split("/")[-1] if raw_id else f"rss_{i}_{int(now)}")
+                link_el = item.find("link")
+                url = link_el.text if link_el is not None else "https://reddit.com"
+                desc = item.find("description") or item.find("content")
+                selftext = clean_html(desc.text if desc is not None else "")[:2000]
+                posts.append({"id": post_id, "title": title, "selftext": selftext,
+                              "url": url, "score": random.randint(50, 400), "created_utc": now})
     except Exception as e:
-        print(f"[RSS PARSER ERROR] Failed to parse feed XML: {e}")
-        
+        print(f"[RSS PARSER] Error: {e}")
     return posts
 
-def _extract_reddit_id(url_or_id: str) -> str | None:
-    match = re.search(r'/comments/([a-z0-9]+)', url_or_id, re.IGNORECASE)
-    if match:
-        return match.group(1)
-    match = re.search(r't3_([a-z0-9]+)', url_or_id, re.IGNORECASE)
-    if match:
-        return match.group(1)
-    return None
-
-rss_cache = {}
-
 def fetch_reddit_rss(subreddit_name: str, limit: int = 25, sort: str = "hot") -> list[dict]:
-    subreddit_name = subreddit_name.strip()
-    cache_key = subreddit_name.lower()
-    now = time.time()
-    
-    if cache_key in rss_cache:
-        cached_entry = rss_cache[cache_key]
-        if now - cached_entry["timestamp"] < 120:
-            print(f"[CACHE HIT] Returning cached feed for '{subreddit_name}'")
-            return cached_entry["posts"][:limit]
-            
-    clean_sub = subreddit_name.replace("r/", "").strip("/")
-    rss_headers = {"User-Agent": USER_AGENT}
-
-    rss_urls = [
+    clean_sub = subreddit_name.replace("r/", "").strip("/").strip()
+    headers = {"User-Agent": USER_AGENT}
+    for url in [
         f"https://www.reddit.com/r/{clean_sub}/.rss?limit={limit}",
         f"https://www.reddit.com/r/{clean_sub}/{sort}/.rss?limit={limit}",
-    ]
-
-    for rss_url in rss_urls:
-        print(f"[RSS] Fetching public Reddit feed: {rss_url}")
+    ]:
+        print(f"[RSS] Fetching: {url}")
         try:
-            response = requests.get(rss_url, headers=rss_headers, timeout=15)
-            if response.status_code == 200:
-                posts = parse_rss_or_atom(response.content, limit=limit)
+            resp = requests.get(url, headers=headers, timeout=15)
+            if resp.status_code == 200:
+                posts = _parse_rss(resp.content, limit)
                 if posts:
-                    print(f"[RSS] OK - Parsed {len(posts)} posts from public feed.")
-                    rss_cache[cache_key] = {"timestamp": now, "posts": posts}
+                    print(f"[RSS] OK — {len(posts)} posts from r/{clean_sub}")
                     return posts
-                print(f"[RSS] Feed returned 200 but no parseable posts: {rss_url}")
-            elif response.status_code == 429:
-                print(f"[RSS] Rate-limited (429) for {rss_url}")
             else:
-                print(f"[RSS] HTTP {response.status_code} for {rss_url}")
+                print(f"[RSS] HTTP {resp.status_code}")
         except Exception as e:
-            print(f"[RSS] Exception fetching {rss_url}: {e}")
-
+            print(f"[RSS] Exception: {e}")
     return []
 
+# ─── Public comment fetcher ───────────────────────────────────────────────────
 def fetch_reddit_comments(post_id: str, limit: int = 25) -> list[dict]:
-    url = f"https://www.reddit.com/comments/{post_id}.json"
-    print(f"[COMMENTS] Fetching real comments for post {post_id}")
-    
+    url = f"https://www.reddit.com/comments/{post_id}.json?raw_json=1"
+    print(f"[COMMENTS] Fetching for post {post_id}")
     try:
-        headers = {"User-Agent": USER_AGENT}
-        response = requests.get(url, headers=headers, timeout=10)
-        
-        if response.status_code == 200:
-            data = response.json()
+        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=15)
+        if resp.status_code == 200:
+            data = resp.json()
             if isinstance(data, list) and len(data) >= 2:
-                comments_listing = data[1].get("data", {}).get("children", [])
                 comments = []
-                
-                for child in comments_listing[:limit]:
+                for child in data[1].get("data", {}).get("children", [])[:limit]:
                     if child.get("kind") != "t1":
                         continue
-                    c_data = child.get("data", {})
-                    body = c_data.get("body", "")
-                    if not body or body == "[deleted]" or body == "[removed]":
+                    d = child.get("data", {})
+                    body = d.get("body", "")
+                    if not body or body in ("[deleted]", "[removed]"):
                         continue
-                    
                     comments.append({
-                        "id": c_data.get("id", f"c_{int(time.time())}"),
+                        "id": d.get("id", f"c_{int(time.time())}"),
                         "post_id": post_id,
                         "body": body[:2000],
-                        "score": c_data.get("score", 0)
+                        "score": d.get("score", 0),
                     })
-                
                 if comments:
-                    print(f"[COMMENTS] OK - Fetched {len(comments)} real comments.")
+                    print(f"[COMMENTS] OK — {len(comments)} comments")
                     return comments
     except Exception as e:
-        print(f"[COMMENTS] Error fetching comments: {e}")
-    
+        print(f"[COMMENTS] Error: {e}")
     return []
 
-# Main functions that main.py uses
-def scrape_subreddit(subreddit_name: str, limit: int = 100):
-    """Main entry point for scraping subreddit posts."""
-    subreddit_name = subreddit_name.strip()
-    
-    if is_using_mock_fallback():
-        print(f"[SCRAPER] Using mock fallback for '{subreddit_name}'.")
+# ─── Main scraping entry points ───────────────────────────────────────────────
+def scrape_subreddit(subreddit_name: str, limit: int = 25) -> list[dict]:
+    """
+    Primary scraping function used by main.py and topic_search.py.
+    Strategy: JSON API first (works from servers), RSS fallback, then mock.
+    """
+    if FORCE_MOCK_DATA:
+        print(f"[SCRAPER] FORCE_MOCK_DATA=true — using mock for '{subreddit_name}'")
         return generate_contextual_posts(subreddit_name, limit)
-    
+
+    # 1. Try JSON API (most reliable from cloud servers)
+    posts = fetch_reddit_json(subreddit_name, limit=limit)
+    if posts:
+        return posts[:limit]
+
+    # 2. Try RSS feed as backup
     posts = fetch_reddit_rss(subreddit_name, limit=limit)
     if posts:
         return posts[:limit]
 
-    print(f"[SCRAPER] Public RSS feed failed for '{subreddit_name}'.")
+    print(f"[SCRAPER] All methods failed for '{subreddit_name}' — returning empty list")
     return []
 
-def scrape_comments(post_id: str, limit: int = 50):
-    """Main entry point for scraping comments."""
-    if is_using_mock_fallback():
+def scrape_comments(post_id: str, limit: int = 50) -> list[dict]:
+    if FORCE_MOCK_DATA:
         return generate_contextual_comments(post_id, limit)
-    
     comments = fetch_reddit_comments(post_id, limit)
-    if comments:
-        return comments
-    
-    return generate_contextual_comments(post_id, limit)
+    return comments if comments else generate_contextual_comments(post_id, limit)
 
-# Mock data generators
-def generate_contextual_posts(subreddit_name: str, limit: int):
-    sub_lower = subreddit_name.lower()
-    
+# ─── Mock data generators (used only when everything else fails) ──────────────
+def generate_contextual_posts(subreddit_name: str, limit: int) -> list[dict]:
+    now = time.time()
     scenarios = [
-        (f"Frustrated with tools in {subreddit_name}", 
+        (f"Frustrated with tools in {subreddit_name}",
          f"The existing solutions for {subreddit_name} are overpriced and don't work well."),
         (f"Why is {subreddit_name} so difficult to manage?",
          f"I've tried everything but nothing works properly for {subreddit_name}."),
         (f"Looking for better {subreddit_name} alternatives",
-         f"Current options are either too expensive or missing key features.")
+         "Current options are either too expensive or missing key features.")
     ]
-    
     posts = []
     for i in range(min(limit, 10)):
         title, body = random.choice(scenarios)
         posts.append({
-            "id": f"mock_{subreddit_name}_{i}_{int(time.time())}",
+            "id": f"mock_{subreddit_name}_{i}_{int(now)}",
             "title": title,
             "selftext": body,
             "url": f"https://reddit.com/r/{subreddit_name}",
             "score": random.randint(50, 600),
-            "created_utc": time.time() - random.randint(1800, 86400)
+            "created_utc": now - random.randint(1800, 86400),
         })
     return posts
 
-def generate_contextual_comments(post_id: str, limit: int):
-    comments = []
-    for i in range(min(limit, 6)):
-        body = random.choice([
-            "I completely agree! This is a major problem.",
-            "Yes, I would pay for a solution to this.",
-            "The existing tools are terrible."
-        ])
-        comments.append({
+def generate_contextual_comments(post_id: str, limit: int) -> list[dict]:
+    return [
+        {
             "id": f"mock_comment_{post_id}_{i}",
             "post_id": post_id,
-            "body": body,
-            "score": random.randint(10, 150)
-        })
-    return comments
+            "body": random.choice([
+                "I completely agree! This is a major problem.",
+                "Yes, I would pay for a solution to this.",
+                "The existing tools are terrible.",
+            ]),
+            "score": random.randint(10, 150),
+        }
+        for i in range(min(limit, 6))
+    ]
