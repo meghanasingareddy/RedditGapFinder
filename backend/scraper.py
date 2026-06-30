@@ -59,9 +59,11 @@ def fetch_reddit_json(subreddit_name: str, limit: int = 25, sort: str = "hot") -
             print(f"[CACHE HIT] {clean_sub}")
             return entry["posts"][:limit]
 
+    # Use multiple sort orders to get a rich, varied set of posts
     urls = [
         f"https://www.reddit.com/r/{clean_sub}/{sort}.json?limit={limit}&raw_json=1",
-        f"https://www.reddit.com/r/{clean_sub}.json?limit={limit}&raw_json=1",
+        f"https://www.reddit.com/r/{clean_sub}/top.json?limit={limit}&t=week&raw_json=1",
+        f"https://www.reddit.com/r/{clean_sub}/new.json?limit={limit}&raw_json=1",
     ]
     headers = {"User-Agent": USER_AGENT}
 
@@ -80,9 +82,14 @@ def fetch_reddit_json(subreddit_name: str, limit: int = 25, sort: str = "hot") -
                     title = d.get("title", "").strip()
                     if not title:
                         continue
-                    selftext = (d.get("selftext") or "").strip()
-                    if selftext in ("[deleted]", "[removed]"):
+                    raw_selftext = (d.get("selftext") or "").strip()
+                    if raw_selftext in ("[deleted]", "[removed]"):
                         selftext = ""
+                    else:
+                        # Clean Reddit boilerplate artifacts
+                        selftext = re.sub(r'\s*submitted by\s*/u/\S+', '', raw_selftext)
+                        selftext = re.sub(r'\[link\]\s*\[comments\]', '', selftext)
+                        selftext = re.sub(r'\s+', ' ', selftext).strip()
                     posts.append({
                         "id": d.get("id", f"rj_{int(now)}_{len(posts)}"),
                         "title": title,
@@ -97,6 +104,8 @@ def fetch_reddit_json(subreddit_name: str, limit: int = 25, sort: str = "hot") -
                     print(f"[JSON API] OK — {len(posts)} posts from r/{clean_sub}")
                     _rss_cache[cache_key] = {"ts": now, "posts": posts}
                     return posts[:limit]
+                # Don't try other sort URLs if subreddit responded but had 0 usable posts
+                # (e.g. all stickied) — break and try the next URL anyway
                 else:
                     print(f"[JSON API] No posts from r/{clean_sub} (status 200 but empty)")
             elif resp.status_code == 429:
