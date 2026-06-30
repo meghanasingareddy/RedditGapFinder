@@ -353,7 +353,7 @@ def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=No
     # 5. AI-powered idea enhancement — replace NLP template ideas with real Gemini analysis
     if ai_analyzer.is_ai_available() and corpus_posts:
         print(f"[AI] Generating enhanced startup ideas for '{topic}'...")
-        ai_ideas = ai_analyzer.generate_startup_ideas(topic, corpus_posts, num_ideas=max(3, len(clusters)))
+        ai_ideas = ai_analyzer.generate_startup_ideas(topic, corpus_posts, num_ideas=6)
         if ai_ideas:
             # Merge AI ideas with existing cluster IDs and scores
             ideas = []

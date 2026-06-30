@@ -133,27 +133,29 @@ def generate_startup_ideas(topic: str, posts: list[dict], num_ideas: int = 5) ->
 
     posts_text = "\n".join(post_digest)
 
-    prompt = f"""You are a startup analyst. Analyze these real Reddit posts about "{topic}" and identify genuine market gaps and startup opportunities.
+    prompt = f"""You are a creative startup advisor. Analyze these real Reddit posts about "{topic}" and identify genuine market gaps and opportunities.
 
 REAL REDDIT POSTS:
 {posts_text}
 
-Based on these posts, identify {num_ideas} specific startup ideas that solve REAL problems mentioned by these users.
+Based on these posts, brainstorm {num_ideas} specific, highly engaging startup ideas or side-hustles that solve REAL problems mentioned by these users.
+
+Make the language conversational, exciting, and easy to understand for normal humans (avoid boring corporate jargon). Be highly creative!
 
 For each idea, return a JSON object with these exact fields:
-- "name": catchy product name (1-2 words)
-- "problem": the specific pain point from the posts (1 sentence, quote or reference actual post content)
-- "audience": who exactly would use this (be specific)
-- "features": 3 key features that solve the problem (bullet points starting with •)
-- "revenue_model": how it makes money (specific pricing)
-- "score": opportunity score 60-99 based on how many people mentioned this problem
+- "name": A catchy, fun product name (1-2 words)
+- "problem": The specific pain point explained in a relatable, human way (e.g. "People are sick of...")
+- "audience": Who exactly would love this (e.g. "Busy moms who...")
+- "features": 3 killer features that actually sound useful (bullet points starting with •)
+- "revenue_model": How it makes money (e.g. "$5/mo subscription because it saves them hours")
+- "score": opportunity score 60-99 based on how much people need this
 
 Return ONLY a valid JSON array of {num_ideas} objects. No markdown, no explanation.
 
 Example format:
 [{{"name": "AppName", "problem": "...", "audience": "...", "features": "• Feature 1\\n• Feature 2\\n• Feature 3", "revenue_model": "...", "score": 85}}]"""
 
-    raw = _call_gemini(prompt, temperature=0.5)
+    raw = _call_gemini(prompt, temperature=0.7)
     if not raw:
         return []
 
