@@ -13,7 +13,7 @@ services:
       - key: CORS_ALLOWED_ORIGINS
         value: https://frontend-xi-taupe-49.vercel.app,http://localhost:5173
       - key: FORCE_MOCK_DATA
-        value: "true"
+        value: "false"
       - key: DATABASE_URL
         value: sqlite:///./redditgapfinder.db
       - key: PYTHON_VERSION

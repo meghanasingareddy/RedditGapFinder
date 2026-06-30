@@ -3,3 +3,8 @@ uvicorn[standard]
 sqlalchemy
 pydantic
 requests
+python-dotenv
+vaderSentiment
+sentence-transformers
+bertopic
+aiohttp
