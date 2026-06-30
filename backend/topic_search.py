@@ -183,17 +183,18 @@ def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=No
         
     subreddits_to_scan = raw_subreddits[:cfg["subreddits"]]
     total_subs = len(subreddits_to_scan)
-    
+
     corpus_posts = []
     scanned_subs_list = []
-    
-    # 2. Fetch posts from RSS feeds in parallel (or mock fallback if RSS fails)
+    tried_subs: set = set(s.lower() for s in subreddits_to_scan)
+
+    # 2. Fetch posts in parallel, retrying with extra subreddits if needed
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    
+
     def scrape_single_subreddit(sub_name):
-        clean_sub = sub_name.replace("r/", "")
+        clean_sub = sub_name.replace("r/", "").strip()
         display_sub = f"r/{clean_sub}"
-        print(f"[TOPIC SEARCH] Scraping feed for '{display_sub}' in parallel thread")
+        print(f"[TOPIC SEARCH] Scraping '{display_sub}'")
         try:
             posts = scraper.scrape_subreddit(clean_sub, limit=cfg["posts_per_sub"])
             if posts:
@@ -201,35 +202,50 @@ def run_topic_analysis(topic: str, depth: str = "standard", progress_callback=No
                     p["subreddit"] = display_sub
                 return display_sub, posts
         except Exception as e:
-            print(f"[TOPIC SEARCH] Error scraping '{display_sub}' in thread: {e}")
+            print(f"[TOPIC SEARCH] Error scraping '{display_sub}': {e}")
         return display_sub, []
 
-    # Run up to 5 subreddits simultaneously using ThreadPoolExecutor
     completed_count = 0
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {
-            executor.submit(scrape_single_subreddit, sub): sub 
-            for sub in subreddits_to_scan
-        }
-        
-        for future in as_completed(futures):
-            completed_count += 1
-            display_sub, posts = future.result()
-            
-            if progress_callback:
-                progress_callback(f"Scanned {display_sub}...", completed_count, total_subs)
-                
-            if posts:
-                scanned_subs_list.append(display_sub)
-                corpus_posts.extend(posts)
-            
-    # Process corpus
+
+    def run_batch(subs):
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(scrape_single_subreddit, s): s for s in subs}
+            for future in as_completed(futures):
+                display_sub, posts = future.result()
+                if progress_callback:
+                    progress_callback(f"Scanned {display_sub}...", len(scanned_subs_list), total_subs)
+                if posts:
+                    scanned_subs_list.append(display_sub)
+                    corpus_posts.extend(posts)
+
+    run_batch(subreddits_to_scan)
+
+    # If we got nothing, expand the fallback list and try more subreddits
     if not corpus_posts:
-        print("[TOPIC SEARCH] Corpus is empty. Generating fallback posts.")
+        print("[TOPIC SEARCH] First batch empty — trying extended fallback subreddits")
+        extended = generate_fallback_subreddits(topic, limit=30)
+        extra = [s for s in extended if s.lower() not in tried_subs][:10]
+        tried_subs.update(s.lower() for s in extra)
+        if extra:
+            run_batch(extra)
+
+    # Still nothing — try universal high-traffic subreddits that always work
+    if not corpus_posts:
+        print("[TOPIC SEARCH] Extended batch also empty — trying universal subreddits")
+        universal = ["startups", "Entrepreneur", "SideHustle", "productivity",
+                     "business", "marketing", "technology", "selfimprovement"]
+        last_resort = [s for s in universal if s.lower() not in tried_subs][:5]
+        if last_resort:
+            run_batch(last_resort)
+
+    # Only use mock if absolutely everything failed
+    if not corpus_posts:
+        print("[TOPIC SEARCH] All real sources failed. Using contextual mock posts.")
         corpus_posts = scraper.generate_contextual_posts(topic, limit=15)
-        scanned_subs_list = [f"r/{topic.lower()}"]
+        scanned_subs_list = [f"r/{topic.lower().replace(' ', '')}"]
         for p in corpus_posts:
-            p["subreddit"] = f"r/{topic.lower()}"
+            p["subreddit"] = scanned_subs_list[0]
+
             
     # 3. Sentiment Analysis and NLP Clustering
     if progress_callback:
